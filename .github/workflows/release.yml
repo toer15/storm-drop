@@ -1,0 +1,51 @@
+name: Release builds
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/ 2>/dev/null || true
+      - name: Export
+        run: |
+          mkdir -p build/windows build/linux build/web dist && touch build/.gdignore
+          godot --headless --import || true
+          godot --headless --export-release "Windows" build/windows/StormDrop.exe
+          godot --headless --export-release "Linux" build/linux/StormDrop.x86_64
+          godot --headless --export-release "Web" build/web/index.html
+          apt-get update -qq && apt-get install -y -qq zip >/dev/null || true
+          (cd build/windows && zip -r ../../dist/StormDrop-$TAG-windows.zip .)
+          (cd build/linux && chmod +x StormDrop.x86_64 && zip -r ../../dist/StormDrop-$TAG-linux.zip .)
+          (cd build/web && zip -r ../../dist/StormDrop-$TAG-web.zip .)
+          ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Storm Drop ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Storm Drop ${{ env.TAG }}: original battle royale made in Godot 4.3.
+            - **Windows:** unzip and run StormDrop.exe
+            - **Linux:** unzip and run ./StormDrop.x86_64
+            - **Web:** unzip and serve the folder over HTTP, or play at https://toer15.github.io/storm-drop/
+          files: dist/*.zip
