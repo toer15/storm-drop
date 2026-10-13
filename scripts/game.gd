@@ -146,18 +146,31 @@ func _hud() -> void:
 	var cl := CanvasLayer.new(); add_child(cl); hud.layer = cl
 	var root := Control.new(); root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(root)
-	var cross := _label(root, Vector2(632, 344), 24); cross.text = "+"
-	hud.shield = ProgressBar.new(); hud.shield.position = Vector2(20, 640); hud.shield.size = Vector2(300, 20)
+	var cross := _label(root, Vector2.ZERO, 24); cross.text = "+"
+	cross.set_anchors_preset(Control.PRESET_CENTER); cross.position -= Vector2(8, 16)
+	hud.shield = ProgressBar.new(); _anchor(hud.shield, 0, 1, Vector2(20, -80)); hud.shield.size = Vector2(300, 20)
 	hud.shield.max_value = 50; hud.shield.modulate = Color(0.3, 0.6, 1); root.add_child(hud.shield)
-	hud.health = ProgressBar.new(); hud.health.position = Vector2(20, 665); hud.health.size = Vector2(300, 24)
+	hud.health = ProgressBar.new(); _anchor(hud.health, 0, 1, Vector2(20, -55)); hud.health.size = Vector2(300, 24)
 	hud.health.modulate = Color(0.3, 1, 0.3); root.add_child(hud.health)
-	hud.ammo = _label(root, Vector2(1050, 650), 28)
-	hud.alive = _label(root, Vector2(1080, 220), 22)
-	hud.storm = _label(root, Vector2(1080, 250), 18)
-	hud.build = _label(root, Vector2(20, 600), 18)
+	hud.ammo = _label(root, Vector2.ZERO, 28); _anchor(hud.ammo, 0.5, 1, Vector2(-60, -50))
+	hud.alive = _label(root, Vector2.ZERO, 22); _anchor(hud.alive, 1, 0, Vector2(-210, 220))
+	hud.storm = _label(root, Vector2.ZERO, 18); _anchor(hud.storm, 1, 0, Vector2(-210, 250))
+	hud.build = _label(root, Vector2.ZERO, 18); _anchor(hud.build, 0, 1, Vector2(20, -110))
 	hud.feed = _label(root, Vector2(20, 20), 16)
-	minimap = Control.new(); minimap.position = Vector2(1070, 10); minimap.size = Vector2(200, 200)
+	minimap = Control.new(); minimap.size = Vector2(200, 200); _anchor(minimap, 1, 0, Vector2(-210, 10))
 	minimap.draw.connect(_draw_minimap); root.add_child(minimap)
+	var tc := preload("res://scripts/touch_controls.gd").new(); tc.player = player
+	tc.visible = Util.touch_enabled; root.add_child(tc); hud.touch = tc
+	var pause := Button.new(); pause.text = "II"; pause.custom_minimum_size = Vector2(64, 64)
+	_anchor(pause, 0.5, 0, Vector2(-32, 10)); pause.pressed.connect(_menu); root.add_child(pause)
+
+func _anchor(c: Control, ax: float, ay: float, off: Vector2) -> void:
+	var sz := c.size
+	c.anchor_left = ax; c.anchor_right = ax; c.anchor_top = ay; c.anchor_bottom = ay
+	c.offset_left = off.x; c.offset_top = off.y; c.offset_right = off.x + sz.x; c.offset_bottom = off.y + sz.y
+
+func _menu() -> void:
+	if not over: _end(false, "Quit")
 
 var feed_lines: Array = []
 func _feed(t: String) -> void:
@@ -188,12 +201,17 @@ func _end(won: bool, killer: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var panel := ColorRect.new(); panel.color = Color(0, 0, 0, 0.6); panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.layer.add_child(panel)
-	var t := _label(panel, Vector2(340, 220), 64)
+	var vb := VBoxContainer.new(); vb.set_anchors_preset(Control.PRESET_CENTER)
+	vb.grow_horizontal = Control.GROW_DIRECTION_BOTH; vb.grow_vertical = Control.GROW_DIRECTION_BOTH
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER; panel.add_child(vb)
+	if hud.has("touch"): hud.touch.visible = false
+	var t := _label(vb, Vector2.ZERO, 64)
 	t.text = "ELIMINATED" if not won else "#1 STORM CHAMPION!"
 	t.add_theme_color_override("font_color", Color(1, 0.85, 0.2) if won else Color(1, 0.3, 0.3))
-	var sub := _label(panel, Vector2(340, 310), 24)
-	sub.text = "You outlasted everyone!" if won else "Eliminated by %s - placed #%d" % [killer, _alive_count() + 1]
-	var b := Button.new(); b.text = "Back to Menu"; b.position = Vector2(340, 380); b.size = Vector2(220, 50)
-	b.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")); panel.add_child(b)
-	var r := Button.new(); r.text = "Play Again"; r.position = Vector2(580, 380); r.size = Vector2(220, 50)
-	r.pressed.connect(func(): get_tree().reload_current_scene()); panel.add_child(r)
+	var sub := _label(vb, Vector2.ZERO, 24)
+	sub.text = "You outlasted everyone!" if won else ("You left the match" if killer == "Quit" else "Eliminated by %s - placed #%d" % [killer, _alive_count() + 1])
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var b := Button.new(); b.text = "Back to Menu"; b.custom_minimum_size = Vector2(260, 70)
+	b.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn")); vb.add_child(b)
+	var r := Button.new(); r.text = "Play Again"; r.custom_minimum_size = Vector2(260, 70)
+	r.pressed.connect(func(): get_tree().reload_current_scene()); vb.add_child(r)

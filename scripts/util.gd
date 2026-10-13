@@ -2,6 +2,14 @@ extends Node
 ## Autoload: shared settings and primitive-building helpers.
 var sensitivity := 0.25
 var bot_count := 15
+## Touch controls: shown automatically on touch devices, can be toggled in Settings.
+var touch_enabled := DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") \
+	or OS.has_feature("web_android") or OS.has_feature("web_ios")
+var touch_move := Vector2.ZERO   # virtual joystick, -1..1
+var touch_look := Vector2.ZERO   # accumulated look delta (pixels), consumed by player
+var touch_fire := false
+var touch_sprint := false
+var touch_jump := false
 
 func mat(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new(); m.albedo_color = c

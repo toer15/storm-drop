@@ -19,7 +19,7 @@ func _ready() -> void:
 	cam = Camera3D.new(); cam.current = true; spring.add_child(cam)
 	ghost = MeshInstance3D.new(); ghost.material_override = Util.mat(Color(0.3, 0.7, 1, 0.4))
 	ghost.visible = false; ghost.top_level = true; add_child(ghost)
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not Util.touch_enabled: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _unhandled_input(e: InputEvent) -> void:
 	if not alive: return
@@ -27,6 +27,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		yaw -= e.relative.x * Util.sensitivity * 0.01
 		pitch = clamp(pitch - e.relative.y * Util.sensitivity * 0.01, -1.3, 0.9)
 	elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+		if Util.touch_enabled: return # touches are emulated as clicks; use the FIRE button
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		if build_mode > 0: _place()
 	elif e is InputEventKey and e.pressed and not e.echo:
@@ -74,6 +75,12 @@ func _place() -> void:
 func _physics_process(delta: float) -> void:
 	super(delta)
 	if not alive: return
+	if Util.touch_look != Vector2.ZERO:
+		yaw -= Util.touch_look.x * Util.sensitivity * 0.02
+		pitch = clamp(pitch - Util.touch_look.y * Util.sensitivity * 0.02, -1.3, 0.9)
+		Util.touch_look = Vector2.ZERO
+	if Util.touch_fire and build_mode > 0:
+		Util.touch_fire = false; _place()
 	rotation.y = yaw
 	$Pivot.rotation.x = pitch
 	var input := Vector2.ZERO
@@ -81,16 +88,17 @@ func _physics_process(delta: float) -> void:
 	if Input.is_physical_key_pressed(KEY_S): input.y += 1
 	if Input.is_physical_key_pressed(KEY_A): input.x -= 1
 	if Input.is_physical_key_pressed(KEY_D): input.x += 1
-	var speed := 9.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 6.0
-	var dir := (transform.basis * Vector3(input.x, 0, input.y)).normalized()
+	if Util.touch_move != Vector2.ZERO: input = Util.touch_move
+	var speed := 9.0 if (Input.is_physical_key_pressed(KEY_SHIFT) or Util.touch_sprint) else 6.0
+	var dir := transform.basis * Vector3(input.x, 0, input.y).limit_length(1.0)
 	velocity.x = dir.x * speed; velocity.z = dir.z * speed
 	if is_on_floor():
-		if Input.is_physical_key_pressed(KEY_SPACE): velocity.y = 8.0
+		if (Input.is_physical_key_pressed(KEY_SPACE) or Util.touch_jump): velocity.y = 8.0
 	else:
 		velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if build_mode > 0: ghost.global_transform = _piece_transform()
-	elif Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif Util.touch_fire or (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED):
 		var vp := get_viewport().get_visible_rect().size / 2
 		var o := cam.project_ray_origin(vp); var d := cam.project_ray_normal(vp)
 		# aim from the camera, fire from the gun
