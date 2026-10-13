@@ -195,6 +195,12 @@ func _build_settings() -> void:
 	var s := HSlider.new(); s.min_value = 0.05; s.max_value = 1.0; s.step = 0.01
 	s.value = Util.sensitivity; s.custom_minimum_size = Vector2(320, 50)
 	s.value_changed.connect(func(v): Util.sensitivity = v); sb.add_child(s)
+	sb.add_child(_lbl("Bot difficulty", 22))
+	var dif := OptionButton.new(); dif.custom_minimum_size = Vector2(320, 50); dif.add_theme_font_size_override("font_size", 22)
+	for d in ["Easy", "Normal", "Hard"]: dif.add_item(d)
+	dif.selected = Util.difficulty; dif.item_selected.connect(func(i): Util.difficulty = i); sb.add_child(dif)
+	var dbg := CheckButton.new(); dbg.text = "AI debug overlay (F3)"; dbg.button_pressed = Util.debug_ai
+	dbg.add_theme_font_size_override("font_size", 22); dbg.toggled.connect(func(on): Util.debug_ai = on); sb.add_child(dbg)
 	sb.add_child(_lbl("Bots", 22))
 	var s2 := SpinBox.new(); s2.min_value = 1; s2.max_value = 40; s2.value = Util.bot_count
 	s2.value_changed.connect(func(v): Util.bot_count = int(v)); sb.add_child(s2)

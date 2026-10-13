@@ -49,6 +49,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_1, KEY_2, KEY_3, KEY_4: _toggle(0); select_slot(e.physical_keycode - KEY_1)
 			KEY_E: interact()
 			KEY_B: emote()
+			KEY_F3: Util.debug_ai = not Util.debug_ai
 			KEY_SPACE: if state == State.BUS: jump_from_bus()
 			KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
