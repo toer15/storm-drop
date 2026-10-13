@@ -24,7 +24,7 @@ FILES = [  # (pack, path inside zip, destination under assets/)
     ("blaster", G + "Textures/colormap.png", "weapons/Textures/colormap.png"),
     *[("nature", f"Models/GLTF format/{n}.glb", f"nature/{n}.glb") for n in
       ["tree_default", "tree_cone", "tree_detailed", "tree_oak", "rock_largeA", "rock_largeC", "rock_tallA", "rock_smallA"]],
-    *[("city", G + f"building-type-{b}.glb", f"buildings/building-type-{b}.glb") for b in "acfk"],
+    *[("city", G + f"building-type-{b}.glb", f"buildings/building-type-{b}.glb") for b in "acdefghkl"],
     ("city", G + "Textures/colormap.png", "buildings/Textures/colormap.png"),
     ("scifi", "Audio/laserSmall_000.ogg", "audio/shoot.ogg"),
     ("scifi", "Audio/forceField_000.ogg", "audio/storm.ogg"),
@@ -37,7 +37,21 @@ FILES = [  # (pack, path inside zip, destination under assets/)
     ("jingles", "Audio/Hit jingles/jingles_HIT05.ogg", "audio/eliminated.ogg"),
 ]
 
+PH = "https://dl.polyhaven.org/file/ph-assets/"
+DIRECT = [  # Poly Haven (CC0): 1k textures + 1k HDRI sky, small enough for phones
+    *[(PH + f"Textures/jpg/1k/{t}/{t}_{m}_1k.jpg", f"textures/{n}_{m}.jpg")
+      for t, n in [("leafy_grass", "grass"), ("coast_sand_01", "sand"), ("rocky_terrain_02", "rock")] for m in ("diff", "nor_gl")],
+    (PH + "HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr", "sky/sky_1k.hdr"),
+]
+
 def main():
+    for url, dst in DIRECT:
+        out = os.path.join(ROOT, dst)
+        if os.path.exists(out): continue
+        print("Downloading", url)
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        req = urllib.request.Request(url, headers={"User-Agent": "storm-drop-fetch"})
+        with urllib.request.urlopen(req) as r, open(out, "wb") as o: shutil.copyfileobj(r, o)
     zips = {}
     for pack, src, dst in FILES:
         out = os.path.join(ROOT, dst)
