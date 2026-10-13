@@ -76,3 +76,10 @@ Quaternius (site, itch.io, Poly Pizza, OpenGameArt), Poly Pizza, OpenGameArt, it
 static.poly.pizza blocks GitHub-hosted CI runners (HTTP 403), so `tools/mirror/` keeps gzip+base64 copies of the Poly Pizza
 models listed above (all CC0, same authors/URLs as in the table). The only change is that unused animation data was stripped
 (`tools/fix_rig.py` + `tools/compact_glb.py`). `tools/fetch_assets.py` downloads from Poly Pizza first and uses the mirror only if that fails.
+
+## v1.4.0 additions
+- **Kenney – City Kit (Commercial) 2.1** (CC0) – skyscrapers, shops and low-detail LOD buildings for Storm City. https://kenney.nl/assets/city-kit-commercial
+- **Kenney – City Kit (Industrial) 2.0** (CC0) – Rust Works factory, Port Gale containers, water tower, windmill. https://kenney.nl/assets/city-kit-industrial
+- **"Bus" by Poly by Google** – **CC-BY 3.0** – Battle Bus. https://poly.pizza/m/4CPpvEmrMoF
+- **"Hot air balloon" by Poly by Google** – **CC-BY 3.0** – balloon that carries the bus. https://poly.pizza/m/8azSIUgP0ow
+- Searched for a CC0 bus or balloon on Poly Pizza, Kenney, Quaternius, OpenGameArt and Sketchfab and found none good enough, so these two use CC-BY (attribution above).

@@ -40,6 +40,9 @@ jobs:
           cp build/windows/StormDrop.exe dist/StormDrop-$TAG-Windows-x64.exe
           (cd build/linux && chmod +x StormDrop.x86_64 && zip -r ../../dist/StormDrop-$TAG-Linux-x64.zip .)
           (cd build/web && zip -r ../../dist/StormDrop-$TAG-Web-HTML5.zip .)
+          # dedicated server bundle: Linux binary + Dockerfile + fly.toml + run script (see server/README.md)
+          mkdir -p build/server/dist && cp build/linux/* build/server/dist/ && cp server/Dockerfile server/fly.toml server/run_server.sh server/README.md build/server/
+          (cd build/server && chmod +x run_server.sh dist/StormDrop.x86_64 && zip -r ../../dist/StormDrop-$TAG-Server-Linux-x64.zip .)
           ls -la dist
       - name: Export Android APK (signed with a generated debug keystore)
         run: |
@@ -78,6 +81,9 @@ jobs:
             | **Android phone** | `StormDrop-${{ env.TAG }}-Android.apk` (open on the phone, allow "Install unknown apps") |
             | **Linux** | `StormDrop-${{ env.TAG }}-Linux-x64.zip` (unzip, run ./StormDrop.x86_64) |
             | **Web** | `StormDrop-${{ env.TAG }}-Web-HTML5.zip` |
+            | **Dedicated server** | `StormDrop-${{ env.TAG }}-Server-Linux-x64.zip` (headless Linux server + Dockerfile + fly.toml, see its README) |
+
+            **Online play:** ONLINE tab > HOST GAME, friends use JOIN BY IP or the LAN list. There is no public matchmaking server; self-host the dedicated server (Docker image `ghcr.io/toer15/storm-drop-server`, or the zip above) to play over the internet.
 
             The .exe is for Windows only; the .apk is for Android only.
             - **Web:** unzip and serve the folder over HTTP, or play at https://toer15.github.io/storm-drop/
@@ -85,3 +91,32 @@ jobs:
             dist/*.zip
             dist/*.apk
             dist/*.exe
+
+  server-image:
+    needs: release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - name: Download server bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "$TAG" -R "${{ github.repository }}" -p "*Server-Linux-x64.zip" -D .
+          unzip -o *Server-Linux-x64.zip -d server && ls -la server server/dist
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: server
+          push: true
+          tags: |
+            ghcr.io/toer15/storm-drop-server:${{ env.TAG }}
+            ghcr.io/toer15/storm-drop-server:latest

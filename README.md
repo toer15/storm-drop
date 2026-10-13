@@ -96,3 +96,24 @@ MIT. See [LICENSE](LICENSE). This is a fan-made original game and is not affilia
 - **Music**: lobby and match loops (CC0, OpenGameArt).
 - Mobile: outlines are skipped and muzzle lights disabled on phones/web; animations are shared resources (loaded once).
 - All sources, authors, licences and URLs: see CREDITS.md.
+
+
+## v1.4.0 – Online play, big map, Battle Bus, crosshair editor
+
+### Play online with a friend
+**There is no public matchmaking server.** One player hosts, or you run your own dedicated server.
+- **Same Wi-Fi/LAN:** one player opens **ONLINE → HOST**. The other opens **ONLINE**, sees the game in the LAN list (desktop and Android) and taps **JOIN**. Everyone presses **READY**, then the host presses **START**.
+- **Over the internet (desktop/Android, ENet):** the host forwards **UDP port 7777** on their router and gives their public IP to friends, who type `IP:7777` in **ONLINE → Join**. Tools like Tailscale/ZeroTier also work without port forwarding.
+- **Web build:** browsers can only use WebSocket. Join a dedicated server started with `--ws`. On an https page it needs `wss://` (for example via fly.io, see `server/README.md`).
+- Settings (name, address, port, region label, max players) are in the ONLINE tab and saved to `user://online.cfg`.
+- Bots fill the match up to about 50 total players.
+
+### Dedicated server
+- Download `StormDrop-v1.4.0-Server-Linux-x64.zip` and run `./run_server.sh` (or `StormDrop.x86_64 --headless -- --server --port=7777 --max=16`). Add `--ws` for web players.
+- Docker: `docker build -f server/Dockerfile -t storm-drop-server .` and then `docker run -p 7777:7777/udp storm-drop-server`. fly.io: see `server/fly.toml` and `server/README.md`.
+- The server is host-authoritative for loot, chests, builds, storm, bots, damage and wins. Player movement is client-sent and sanity-checked.
+
+### Other new things
+- **Crosshair:** changes per weapon, spreads while moving or shooting, and shows hit/kill markers. **Settings → Crosshair** editor: style, colour, size, thickness, gap, outline, opacity, centre dot, presets, live preview. Saved to `user://crosshair.cfg`.
+- **Map about 4x bigger:** Storm City, Pine Grove, Sunny Shores, Haystack Farm, Rust Works, Port Gale docks, roads, a mountain and beaches. Uses LOD, visibility ranges, terrain chunks and occlusion culling to keep phones fast. Press **M**/MAP for the full map with the bus route.
+- **Battle Bus under a hot air balloon:** inside view with seated bots (press **V** to switch to the outside view), jump prompt, everyone skydives and glides (the glider opens on its own at 38 m).
