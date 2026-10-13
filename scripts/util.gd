@@ -2,6 +2,8 @@ extends Node
 ## Autoload: shared settings and primitive-building helpers.
 var sensitivity := 0.25
 var bot_count := 15
+var difficulty := 1   # 0 Easy, 1 Normal, 2 Hard
+var debug_ai := false  # F3 or Settings: show each bot's current decision
 ## Screenshot mode: `godot -- --shot=res_or_user_path.png [--tab=Locker] [--delay=4]` saves the screen then quits.
 var shot_path := ""
 var shot_tab := ""
@@ -15,6 +17,8 @@ func _ready() -> void:
 		elif a.begins_with("--delay="): shot_delay = float(a.substr(8))
 		elif a == "--hold-boot": hold_boot = true
 		elif a == "--touch": touch_enabled = true
+		elif a == "--debug-ai": debug_ai = true
+		elif a.begins_with("--difficulty="): difficulty = int(a.substr(13))
 	if shot_path != "":
 		await get_tree().create_timer(shot_delay).timeout
 		await RenderingServer.frame_post_draw
@@ -61,6 +65,7 @@ func make_character(skin := "", backbling := "bb_none", pickaxe := "pick_default
 	var model: Node3D = load(path).instantiate()
 	model.scale = Vector3.ONE * 2.7
 	model.rotation.y = PI # Kenney models face +Z, our forward is -Z
+	stylize(model, 0.012)
 	root.add_child(model)
 	var gun: Node3D = load("res://assets/weapons/blaster-a.glb").instantiate(); gun.name = "Gun"
 	gun.scale = Vector3.ONE * 0.9; gun.position = Vector3(0.35, 1.0, -0.35); gun.rotation.y = PI
@@ -84,6 +89,26 @@ func make_character(skin := "", backbling := "bb_none", pickaxe := "pick_default
 		root.add_child(bm)
 	play_anim(root, "holding-right")
 	return root
+
+## True on phones / web / the Compatibility renderer: use cheaper effects there.
+func low_end() -> bool:
+	return RenderingServer.get_rendering_device() == null or OS.has_feature("mobile") or OS.has_feature("web")
+
+var _outline_cache := {}
+## Toon look: rim light + inverted-hull outline (next_pass) on every surface of a model.
+func stylize(node: Node, thickness := 0.012, rim := 0.35) -> void:
+	if not _outline_cache.has(thickness):
+		var om := ShaderMaterial.new(); om.shader = preload("res://shaders/outline.gdshader")
+		om.set_shader_parameter("thickness", thickness); _outline_cache[thickness] = om
+	for mi in node.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null: continue
+		for i in mi.mesh.get_surface_count():
+			var m = mi.get_active_material(i)
+			if not (m is StandardMaterial3D): continue
+			var d: StandardMaterial3D = m.duplicate()
+			d.rim_enabled = true; d.rim = rim; d.rim_tint = 0.3
+			if thickness > 0.0: d.next_pass = _outline_cache[thickness]
+			mi.set_surface_override_material(i, d)
 
 ## Show the pickaxe or the gun (tinted by rarity colour).
 func hold(model: Node3D, pickaxe: bool, tint := Color.WHITE) -> void:

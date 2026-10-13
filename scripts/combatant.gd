@@ -28,8 +28,18 @@ static func ammo_kind(w: Dictionary) -> String:
 		"shotgun": return "shells"
 	return "light"
 
+var heals := 0            # shield potions (used by bots; chests give one)
+var last_hit_time := -99.0
+var last_attacker: Combatant
+var last_shot_time := -99.0
+
+func now() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
 func take_damage(amount: float, killer = null) -> void:
 	if not alive: return
+	last_hit_time = now()
+	if killer is Combatant and killer != self: last_attacker = killer
 	var s: float = min(shield, amount); shield -= s; health -= amount - s
 	if health <= 0:
 		health = 0; alive = false
@@ -68,7 +78,7 @@ func fire(origin: Vector3, dir: Vector3, extra_spread := 0.0):
 	if current == 0: return _swing(origin, dir)
 	var w := weapon()
 	if w.ammo <= 0: reload(); return null
-	w.ammo -= 1; fire_cd = w.rate; _shot_anim = 0.2
+	w.ammo -= 1; fire_cd = w.rate; _shot_anim = 0.2; last_shot_time = now()
 	Util.sfx("shoot", origin, -6.0 if self is Bot else 0.0)
 	var end := origin
 	for p in w.pellets:
