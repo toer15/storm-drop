@@ -36,9 +36,10 @@ jobs:
           godot --headless --export-release "Linux" build/linux/StormDrop.x86_64
           godot --headless --export-release "Web" build/web/index.html
           apt-get update -qq && apt-get install -y -qq zip >/dev/null || true
-          (cd build/windows && zip -r ../../dist/StormDrop-$TAG-windows.zip .)
-          (cd build/linux && chmod +x StormDrop.x86_64 && zip -r ../../dist/StormDrop-$TAG-linux.zip .)
-          (cd build/web && zip -r ../../dist/StormDrop-$TAG-web.zip .)
+          (cd build/windows && zip -r ../../dist/StormDrop-$TAG-Windows-x64-exe.zip .)
+          cp build/windows/StormDrop.exe dist/StormDrop-$TAG-Windows-x64.exe
+          (cd build/linux && chmod +x StormDrop.x86_64 && zip -r ../../dist/StormDrop-$TAG-Linux-x64.zip .)
+          (cd build/web && zip -r ../../dist/StormDrop-$TAG-Web-HTML5.zip .)
           ls -la dist
       - name: Export Android APK (signed with a generated debug keystore)
         run: |
@@ -63,7 +64,7 @@ jobs:
           BT=$(ls -d $SDK/build-tools/* | tail -1)
           $BT/apksigner verify --verbose build/android/StormDrop.apk
           unzip -l build/android/StormDrop.apk | grep -E "lib/(arm64-v8a|armeabi-v7a)/"
-          cp build/android/StormDrop.apk dist/StormDrop.apk
+          cp build/android/StormDrop.apk dist/StormDrop-$TAG-Android.apk
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
@@ -71,10 +72,16 @@ jobs:
           target_commitish: ${{ github.sha }}
           body: |
             Storm Drop ${{ env.TAG }}: original battle royale made in Godot 4.3.
-            - **Windows:** unzip and run StormDrop.exe
-            - **Linux:** unzip and run ./StormDrop.x86_64
-            - **Android:** download StormDrop.apk on your phone, open it and allow "Install unknown apps"
+            | Platform | File |
+            |---|---|
+            | **Windows PC** | `StormDrop-${{ env.TAG }}-Windows-x64.exe` (run directly) or the `-Windows-x64-exe.zip` |
+            | **Android phone** | `StormDrop-${{ env.TAG }}-Android.apk` (open on the phone, allow "Install unknown apps") |
+            | **Linux** | `StormDrop-${{ env.TAG }}-Linux-x64.zip` (unzip, run ./StormDrop.x86_64) |
+            | **Web** | `StormDrop-${{ env.TAG }}-Web-HTML5.zip` |
+
+            The .exe is for Windows only; the .apk is for Android only.
             - **Web:** unzip and serve the folder over HTTP, or play at https://toer15.github.io/storm-drop/
           files: |
             dist/*.zip
             dist/*.apk
+            dist/*.exe

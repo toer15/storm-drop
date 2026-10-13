@@ -4,6 +4,12 @@ An original, open-source battle-royale prototype made with **Godot 4** (GDScript
 It uses free CC0 low-poly 3D models and sounds from [Kenney](https://kenney.nl) (see [CREDITS.md](CREDITS.md)); the island, storm and build pieces are generated in code.
 
 ## Features
+- **Front end:** animated loading screen with key art, logo, progress bar and tips; 3D lobby with your character on a stage; tabs for Lobby, Battle Pass, Locker, Item Shop and Career; big PLAY button with Solo/Duos select (Duos is visual only) and a matchmaking countdown
+- **Item Shop:** daily rotating skins, back blings, pickaxes and emotes bought with **Drop Coins**, a soft currency earned by playing (no real money). Progress is saved to `user://profile.cfg`
+- **Locker:** equip owned cosmetics; they show in the lobby and in the match
+- **Battle Pass:** 20 tiers unlocked with match XP (eliminations, placement, wins)
+- **Career:** matches, wins, win rate, eliminations, K/D, top 10s, best placement, time played
+- **Match:** Storm Bus drop + glider, loot chests, floor loot with 5 weapon types (Pistol, Assault Rifle, SMG, Shotgun, Sniper) in 5 rarity colours, pickaxe to harvest materials, 4-slot hotbar, emotes, victory screen with XP/coin rewards
 - Animated low-poly characters (idle, walk, sprint, jump, shoot, death), a blaster model, trees, rocks and houses from Kenney (CC0)
 - Sound effects: gunshots, reload, building, footsteps, hit markers, storm hum, UI clicks, victory/elimination jingles
 - Loading screen with title, progress bar, and rotating tips (async `ResourceLoader.load_threaded_request`)
@@ -29,6 +35,10 @@ It uses free CC0 low-poly 3D models and sounds from [Kenney](https://kenney.nl) 
 | R | Reload |
 | Z / X / C (or Q) | Build wall / floor / ramp (press again to exit) |
 | 1 | Back to weapon |
+| 1-4 | Pickaxe / weapon slots |
+| E | Open chest / swap weapon |
+| B | Emote |
+| Space (on the bus) | Drop, then steer the glider with WASD |
 | Esc | Release the mouse |
 
 ## Play on your phone
@@ -44,7 +54,10 @@ Shown automatically on touchscreens; toggle them in **Settings > Touch controls*
 | FIRE | Shoot (hold), or place a piece in build mode |
 | JUMP / SPRINT (hold) | Jump / sprint |
 | RELOAD | Reload |
-| WALL / FLOOR / RAMP / GUN | Build modes / back to weapon |
+| WALL / FLOOR / RAMP | Build modes |
+| SWAP | Cycle pickaxe / weapons |
+| USE | Open chest / swap weapon |
+| EMOTE | Emote |
 | II (top centre) | Leave the match |
 
 The UI scales to any screen size (stretch mode `canvas_items`, aspect `expand`), the game is locked to landscape, and it uses the Compatibility (OpenGL ES 3 / WebGL 2) renderer so it runs on phones and in browsers. The web export has threads disabled, so it needs no special server headers.
