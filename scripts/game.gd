@@ -27,7 +27,8 @@ var bus_start := Vector3.ZERO
 func _ready() -> void:
 	randomize(); noise.seed = randi(); noise.frequency = 0.01
 	_env(); _terrain(); _props(); _loot(); _bake_nav(); _storm(); _spawn(); _bus(); _hud()
-	if Util.shot_tab in ["ground", "victory", "touch", "wide", "combat", "ai"]:
+	Util.music("res://assets/music13/match.ogg")
+	if Util.shot_tab in ["ground", "victory", "touch", "wide", "combat", "ai", "showcase"]:
 		for c in combatants:
 			if c is Bot: c.drop(); c.gliding = false; c.glider.visible = false; c.global_position = _rand_point() + Vector3(0, 1, 0)
 	match Util.shot_tab: # screenshot helpers (see Util)
@@ -63,6 +64,40 @@ func _ready() -> void:
 					if i % 2 == 0: c.give_weapon(Weapons.make("ar", 2))
 		"glide":
 			await get_tree().create_timer(1.0).timeout; player.jump_from_bus()
+		"showcase": # v1.3 screenshots: --weapon=<type> [--fp] or --emote=<anim>, front 3/4 camera unless --fp
+			player.jump_from_bus(); player.state = Player.State.GROUND; player.glider.visible = false
+			var spot: Vector3 = _ground(0, 0); var near: Vector3 = house_spots[0]
+			seed(7)
+			for k in 200: # open ground with a house ~20 m away to look at
+				var cand := _rand_point(ISLAND * 0.6); var md := 1e9; var nh := Vector3.ZERO
+				for hs in house_spots:
+					var dd := Vector2(hs.x - cand.x, hs.z - cand.z).length()
+					if dd < md: md = dd; nh = hs
+				var clear := true
+				for t in trees: if (t[0] as Node3D).global_position.distance_to(cand) < 6.0: clear = false
+				if md > 18.0 and md < 30.0 and clear: spot = cand; near = nh; break
+			player.global_position = spot + Vector3(0, 0.5, 0); player.pitch = -0.08
+			var dv := near - spot; player.yaw = atan2(-dv.x, -dv.z) + 0.35
+			for c in combatants: if c != player: c.visible = false; c.process_mode = Node.PROCESS_MODE_DISABLED; c.get_node("CollisionShape3D").disabled = true
+			var wt := ""; var em := ""
+			for a in OS.get_cmdline_user_args():
+				if a.begins_with("--weapon="): wt = a.substr(9)
+				if a.begins_with("--emote="): em = a.substr(8)
+			if wt == "pickaxe": player.select_slot(0)
+			elif wt != "": player.give_weapon(Weapons.make(wt, 3))
+			if not player.fp:
+				var cam := Camera3D.new(); add_child(cam); cam.current = true; cam.fov = 45
+				await get_tree().create_timer(0.6).timeout
+				var f := -player.global_basis.z; var r := player.global_basis.x
+				if em != "" or "--front" in OS.get_cmdline_user_args():
+					cam.global_position = player.global_position + f * 2.0 + r * 2.0 + Vector3(0, 1.5, 0)
+					cam.look_at(player.global_position + Vector3(0, 1.05, 0) + r * 0.1)
+				else: # over-the-shoulder, slightly to the side so the gun reads clearly
+					cam.global_position = player.global_position - f * 1.5 + r * 1.6 + Vector3(0, 1.6, 0)
+					cam.look_at(player.global_position + f * 1.2 + Vector3(0, 1.2, 0))
+			if em != "": player.emote_t = 99; Profile.equipped.emote = em
+			elif wt != "" and wt != "pickaxe" and "--firing" in OS.get_cmdline_user_args(): Util.touch_fire = true
+			elif wt == "pickaxe" and "--firing" in OS.get_cmdline_user_args(): Util.touch_fire = true
 
 func height(x: float, z: float) -> float:
 	var d := Vector2(x, z).length() / ISLAND
@@ -171,6 +206,15 @@ func _props() -> void:
 		h.rotation.y = randi() % 4 * PI / 2; h.set_meta("harvest", 10); h.add_to_group("nav"); add_child(h)
 		Util.stylize(h, 0.004 if not Util.low_end() else 0.0, 0.15)
 		house_spots.append(h.position)
+	# Parked cars by some houses: Quaternius Pickup Truck + Kay Lousberg Stationwagon (both CC0, Poly Pizza).
+	for i in mini(8, house_spots.size()):
+		var hp: Vector3 = house_spots[i * 2 % house_spots.size()]
+		var off := Vector3(randf_range(-7, 7), 0, -9.0 if i % 2 == 0 else 9.0)
+		var truck := i % 2 == 0
+		var v := Util.static_model("res://assets/props13/pickup_truck.glb" if truck else "res://assets/props13/stationwagon.glb",
+			1.0 if truck else 4.6, _ground(hp.x + off.x, hp.z + off.z) + Vector3(0, 0.05, 0))
+		v.rotation.y = randf_range(-0.4, 0.4) + (PI / 2 if randf() < 0.5 else 0.0); v.set_meta("harvest", 25)
+		v.add_to_group("nav"); add_child(v); Util.stylize(v, 0.0, 0.25)
 
 # ---------------- Loot ----------------
 func _loot() -> void:
@@ -179,15 +223,18 @@ func _loot() -> void:
 		var p: Vector3 = _rand_point()
 		if i < house_spots.size(): p = house_spots[i] + Vector3(randf_range(-6, 6), 0, 6.5)
 		p = _ground(p.x, p.z)
-		var c := Util.static_box(Vector3(1.4, 0.9, 0.9), Color(0.85, 0.6, 0.1), p + Vector3(0, 0.45, 0))
-		var lid := Util.mesh(Util.box(Vector3(1.5, 0.2, 1.0)), Color(1, 0.85, 0.3), Vector3(0, 0.5, 0))
-		lid.material_override.emission_enabled = true; lid.material_override.emission = Color(1, 0.7, 0.1) * 0.6
-		c.add_child(lid); var l := OmniLight3D.new(); l.light_color = Color(1, 0.8, 0.3); l.omni_range = 4; c.add_child(l)
+		var c := Util.static_box(Vector3(1.3, 1.0, 1.1), Color(0.85, 0.6, 0.1), p + Vector3(0, 0.5, 0))
+		for mi in c.find_children("*", "MeshInstance3D", true, false): mi.visible = false
+		# Quaternius animated treasure chest (CC0) with a golden glow
+		var cm: Node3D = load("res://assets/props13/chest.glb").instantiate(); cm.name = "ChestModel"
+		cm.scale = Vector3.ONE * 0.62; cm.position = Vector3(0, -0.5, 0); cm.rotation.y = PI; c.add_child(cm)
+		Util.stylize(cm, 0.0, 0.45)
+		var l := OmniLight3D.new(); l.light_color = Color(1, 0.8, 0.3); l.omni_range = 4; l.position.y = 0.6; c.add_child(l)
 		c.add_to_group("nav"); add_child(c); chests.append(c)
 
 func _spawn_floor_loot(pos: Vector3, w: Dictionary) -> void:
 	var n := Node3D.new(); n.position = pos; add_child(n)
-	var g: Node3D = load(w.model).instantiate(); g.scale = Vector3.ONE * 1.4; n.add_child(g)
+	var g: Node3D = Gear.make_gun(w.type); g.scale = Vector3.ONE * 1.3; g.rotation.z = 0.25; n.add_child(g)
 	var ring := TorusMesh.new(); ring.inner_radius = 0.5; ring.outer_radius = 0.65
 	var rm := Util.mesh(ring, Weapons.color(w), Vector3(0, -0.6, 0))
 	rm.material_override.emission_enabled = true; rm.material_override.emission = Weapons.color(w)
@@ -242,11 +289,15 @@ func nearest_chest(pos: Vector3, max_d: float):
 func open_chest(p: Combatant, n: Node3D) -> void:
 	if not n in chests: return
 	chests.erase(n); Util.sfx("victory", n.global_position, -10)
+	var cap: AnimationPlayer = n.find_child("AnimationPlayer", true, false)
+	if cap:
+		for a in cap.get_animation_list(): if a.ends_with("Chest_Open"): cap.play(a)
 	for k in 2: _spawn_floor_loot(n.global_position + Vector3(randf_range(-1.5, 1.5), 0.8, randf_range(1, 2)), Weapons.random_drop())
-	for k in p.reserve: p.reserve[k] += {"light": 60, "heavy": 6, "shells": 10}[k]
+	for k in p.reserve: p.reserve[k] += {"light": 60, "heavy": 6, "shells": 10, "rockets": 1}[k]
 	p.mats = mini(p.mats + 30, 999); p.shield = min(50.0, p.shield + 25); p.heals += 1
 	if p == player: _feed("Chest opened: +ammo, +30 mats, +25 shield")
-	n.queue_free()
+	n.remove_from_group("nav")
+	get_tree().create_timer(1.2).timeout.connect(n.queue_free)
 
 func interact(p: Player) -> void:
 	var n = nearest_interactable()

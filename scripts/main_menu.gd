@@ -20,6 +20,7 @@ var mode_note: Label
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	Util.music("res://assets/music13/lobby.ogg")
 	_stage()
 	var top := ColorRect.new(); top.color = Color(0.05, 0.03, 0.15, 0.85)
 	top.anchor_right = 1; top.offset_bottom = 84; add_child(top)
@@ -83,12 +84,15 @@ func _rebuild_hero() -> void:
 	if is_instance_valid(hero): hero.queue_free()
 	hero = Util.make_character(Profile.equipped.skin, Profile.equipped.backbling, Profile.equipped.pickaxe)
 	hero.position = Vector3(0, 0.25, 0); hero.rotation.y = PI + 0.4  # face the camera
-	Util.hold(hero, locker_cat == "pickaxe" and pages.has("LOCKER") and pages["LOCKER"].visible); Util.play_anim(hero, "idle")
+	hero.scale = Vector3.ONE * 1.55
+	Util.hold(hero, true); hero.get_meta("pickaxe").visible = locker_cat == "pickaxe" and pages.has("LOCKER") and pages["LOCKER"].visible
+	Util.play_anim(hero, "idle")
 	stage_root.add_child(hero)
 
 func _process(delta: float) -> void:
 	if is_instance_valid(hero) and Util.anim_player(hero) and not Util.anim_player(hero).is_playing():
 		Util.play_anim(hero, "idle")
+	if is_instance_valid(hero): Util.align_gear(hero)
 	var ring := stage_root.get_node_or_null("Ring")
 	if ring: ring.rotate_y(delta * 0.3)
 	if mm_time >= 0:

@@ -17,12 +17,12 @@ var mode := "Solo"
 var last_result := {}
 
 func _init() -> void:
-	var skins := [["scout", "male-a"], ["ranger", "female-a"], ["blaze", "male-b"], ["nova", "female-b"],
-		["tank", "male-c"], ["vex", "female-c"], ["drift", "male-d"], ["luma", "female-d"],
-		["rook", "male-e"], ["sable", "female-e"], ["kite", "male-f"], ["zephyr", "female-f"]]
+	var skins := [["scout", "adventurer"], ["ranger", "woman"], ["blaze", "punk"], ["nova", "woman2"],
+		["tank", "swat"], ["vex", "hooded"], ["drift", "casual"], ["luma", "beach"],
+		["rook", "worker"], ["sable", "farmer"], ["kite", "astronaut"], ["zephyr", "swat"]]
 	for i in skins.size():
 		var s: Array = skins[i]
-		_add("skin_" + s[0], "skin", s[0].capitalize(), mini(i / 2, 4), {"model": "res://assets/characters/character-%s.glb" % s[1]}, i >= 10)
+		_add("skin_" + s[0], "skin", s[0].capitalize(), mini(i / 2, 4), {"model": "res://assets/chars13/%s.glb" % s[1]}, i >= 10)
 	_add("bb_none", "backbling", "No Back Bling", 0, {"shape": "none"})
 	_add("bb_cube", "backbling", "Cube Pack", 1, {"shape": "box", "color": Color(0.2, 0.7, 1)})
 	_add("bb_orb", "backbling", "Storm Orb", 3, {"shape": "sphere", "color": Color(0.7, 0.3, 1)})
@@ -36,11 +36,18 @@ func _init() -> void:
 	_add("pick_void", "pickaxe", "Void Cleaver", 3, {"color": Color(0.4, 0.1, 0.8)}, true)
 	_add("emote_nod", "emote", "Nod", 0, {"anim": "emote-yes"})
 	_add("emote_nope", "emote", "Nope", 1, {"anim": "emote-no"})
-	_add("emote_wave", "emote", "Wave", 1, {"anim": "interact-right"})
+	_add("emote_wave", "emote", "Wave", 1, {"anim": "emote-wave"})
 	_add("emote_scoop", "emote", "Scoop", 2, {"anim": "pick-up"})
-	_add("emote_kick", "emote", "Kickflip", 3, {"anim": "attack-kick-right"})
+	_add("emote_kick", "emote", "Shadow Box", 3, {"anim": "emote-box"})
 	_add("emote_chill", "emote", "Chill", 2, {"anim": "sit"}, true)
-	for id in ["skin_scout", "bb_none", "pick_default", "emote_nod"]: owned[id] = true
+	_add("emote_dance", "emote", "Groove", 2, {"anim": "emote-dance"})
+	_add("emote_zombie", "emote", "Zombie Shuffle", 3, {"anim": "emote-zombie"})
+	_add("emote_spell", "emote", "Hocus Pocus", 2, {"anim": "emote-spell"})
+	_add("emote_swim", "emote", "Dry Swim", 3, {"anim": "emote-swim"})
+	_add("emote_slide", "emote", "Floor Slide", 4, {"anim": "emote-slide"}, true)
+	_add("emote_fold", "emote", "Unbothered", 1, {"anim": "emote-fold"})
+	_add("emote_phone", "emote", "On The Phone", 1, {"anim": "emote-phone"})
+	for id in ["skin_scout", "bb_none", "pick_default", "emote_nod", "emote_dance"]: owned[id] = true
 	load_profile()
 
 func _add(id: String, type: String, nm: String, rarity: int, data: Dictionary, bp := false) -> void:
@@ -48,7 +55,7 @@ func _add(id: String, type: String, nm: String, rarity: int, data: Dictionary, b
 
 ## Battle pass: tier -> reward. {"coins": n} or {"item": id}
 func bp_reward(tier: int) -> Dictionary:
-	var items := {3: "bb_crystal", 6: "pick_void", 9: "emote_chill", 12: "skin_kite", 16: "bb_orb", 20: "skin_zephyr"}
+	var items := {3: "bb_crystal", 6: "pick_void", 9: "emote_chill", 12: "skin_kite", 14: "emote_slide", 16: "bb_orb", 20: "skin_zephyr"}
 	if items.has(tier): return {"item": items[tier]}
 	return {"coins": 100 if tier % 2 == 1 else 200}
 
