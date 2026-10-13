@@ -86,3 +86,13 @@ MIT. See [LICENSE](LICENSE). This is a fan-made original game and is not affilia
 - **Movement:** runtime-baked NavigationRegion3D + NavigationAgent3D, acceleration/turning, strafing, jump spam, crouch peeks, reaction time & aim error by skill, spray vs tap fire, builds walls/ramps when shot.
 - **Difficulty** (Easy/Normal/Hard) in Settings. **AI debug overlay:** Settings checkbox or **F3** in match shows each bot's persona and current decision.
 - Mobile performance: staggered thinking (slower for far bots), lighter post-processing.
+
+## v1.3.0 — Real characters, guns, animations & music
+- **11 Quaternius outfits** (SWAT, Adventurer, Astronaut, Punk, ...) replace the blocky minis, all driven by one shared **Universal Animation Library** set (CC0) retargeted at import: idle, jog, sprint, crouch, crouch-walk, jump/fall/land, glide, sit (bus), aim, shoot, reload, pickaxe swing, build/interact, chest open, heal, hit, death.
+- **12 emotes** including Groove (dance), Zombie Shuffle, Hocus Pocus, Dry Swim, Floor Slide, Wave, Shadow Box, Unbothered, On The Phone.
+- **Realistic stylised guns** (Pichuliru / Quaternius / CreativeTrio, CC0): pistol, assault rifle, SMG, pump shotgun, sniper and the new **rocket launcher** (splash damage, explosion). Muzzle flashes, recoil, reload animation and real gunshot/reload sounds.
+- **First-person view**: press **V** (or the VIEW touch button) for a first-person camera with a view-model gun.
+- **Real pickaxe and backpack models**, animated **treasure chests** that open, **parked cars**.
+- **Music**: lobby and match loops (CC0, OpenGameArt).
+- Mobile: outlines are skipped and muzzle lights disabled on phones/web; animations are shared resources (loaded once).
+- All sources, authors, licences and URLs: see CREDITS.md.
