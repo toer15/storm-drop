@@ -20,6 +20,7 @@ textures/vram_compression/import_etc2_astc=true
 
 [autoload]
 Util="*res://scripts/util.gd"
+Profile="*res://scripts/profile.gd"
 
 
 [input_devices]

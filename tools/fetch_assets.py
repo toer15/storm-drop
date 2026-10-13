@@ -18,9 +18,9 @@ PACKS = {
 }
 G = "Models/GLB format/"
 FILES = [  # (pack, path inside zip, destination under assets/)
-    *[("chars", G + f"character-{c}.glb", f"characters/character-{c}.glb") for c in ["male-a", "male-c", "female-b", "female-d"]],
+    *[("chars", G + f"character-{c}.glb", f"characters/character-{c}.glb") for c in [f"{g}-{x}" for g in ("male", "female") for x in "abcdef"]],
     ("chars", G + "Textures/colormap.png", "characters/Textures/colormap.png"),
-    ("blaster", G + "blaster-a.glb", "weapons/blaster-a.glb"),
+    *[("blaster", G + f"blaster-{x}.glb", f"weapons/blaster-{x}.glb") for x in "abcdeh"],
     ("blaster", G + "Textures/colormap.png", "weapons/Textures/colormap.png"),
     *[("nature", f"Models/GLTF format/{n}.glb", f"nature/{n}.glb") for n in
       ["tree_default", "tree_cone", "tree_detailed", "tree_oak", "rock_largeA", "rock_largeC", "rock_tallA", "rock_smallA"]],
