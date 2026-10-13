@@ -27,6 +27,8 @@ var think_t := 0.0
 var agent: NavigationAgent3D
 var in_bus := true
 var gliding := false
+var falling := false
+var seat := 0
 var drop_at := 0.0
 var land_target := Vector3.ZERO
 var build_cd := 0.0
@@ -67,15 +69,23 @@ func _ready() -> void:
 func _nerf(w: Dictionary) -> Dictionary:
 	w = w.duplicate(); w.damage *= lerpf(0.4, 0.75, skill); return w
 
-func start_in_bus(t: float, target: Vector3) -> void:
-	in_bus = true; drop_at = t; land_target = target; visible = false
+## Seated in the Battle Bus until drop_at, then jump out of the back door at `exit`.
+func start_in_bus(t: float, target: Vector3, seat_i := 0) -> void:
+	in_bus = true; drop_at = t; land_target = target; visible = true; seat = seat_i
 	$CollisionShape3D.disabled = true; target_pos = target
 
-func drop() -> void:
-	in_bus = false; gliding = true; visible = true; glider.visible = true
+func drop(exit := Vector3.ZERO) -> void:
+	in_bus = false; falling = true; gliding = false; visible = true; glider.visible = false
+	if exit != Vector3.ZERO: global_position = exit + Vector3(randf_range(-0.6, 0.6), 0, 0)
+	velocity = Vector3.ZERO
 	$CollisionShape3D.disabled = false
 
+func targetable() -> bool:
+	return alive and not in_bus and not gliding and not falling
+
 func base_anim(hs: float) -> String:
+	if in_bus: return "sit"
+	if falling: return "skydive"
 	if gliding: return "glide"
 	if action_anim_t > 0: return action_anim
 	if crouching and is_on_floor(): return "crouch" if hs < 1.0 else "crouch-walk"
@@ -95,7 +105,7 @@ func _visible_enemy(range_m: float) -> Combatant:
 	var best: Combatant = null; var bd := range_m
 	for c in game.combatants:
 		if not is_instance_valid(c) or c == self or not c.alive: continue
-		if (c is Player and c.state != Player.State.GROUND) or (c is Bot and (c.in_bus or c.gliding)): continue
+		if not c.targetable(): continue
 		var d := global_position.distance_to(c.global_position)
 		if d < bd and _line_of_sight(c): bd = d; best = c
 	return best
@@ -208,12 +218,10 @@ func _build_cover() -> void:
 	var dir := Vector3(threat.global_position.x - global_position.x, 0, threat.global_position.z - global_position.z).normalized()
 	var ramp := persona == Persona.BUILDER and randf() < 0.5
 	mats -= 10
-	var piece := Util.static_box(Vector3(4, 0.2, 5) if ramp else Vector3(4, 3, 0.2), Color(0.7, 0.5, 0.3), Vector3.ZERO)
-	piece.set_script(load("res://scripts/build_piece.gd"))
-	get_tree().current_scene.add_child(piece)
-	piece.global_position = global_position + dir * 2.2 + Vector3(0, 1.5, 0)
-	piece.look_at(piece.global_position + dir)
-	if ramp: piece.rotate_object_local(Vector3.RIGHT, deg_to_rad(36.87))
+	var pos := global_position + dir * 2.2 + Vector3(0, 1.5, 0)
+	var xf := Transform3D(Basis.looking_at(dir, Vector3.UP), pos)
+	if ramp: xf.basis = xf.basis * Basis(Vector3.RIGHT, deg_to_rad(36.87))
+	game.spawn_piece(xf, Vector3(4, 0.2, 5) if ramp else Vector3(4, 3, 0.2))
 	_play_action("build", 0.4)
 	Util.sfx("build", global_position, -6)
 
@@ -286,6 +294,16 @@ func _physics_process(delta: float) -> void:
 	super(delta)
 	if not alive or in_bus: return
 	build_cd -= delta; action_anim_t -= delta
+	if falling: # skydive toward the landing spot, open the glider ~35 m above the ground
+		var fl := Vector3(land_target.x - global_position.x, 0, land_target.z - global_position.z)
+		var fv := fl.limit_length(1.0) * 20.0
+		velocity = Vector3(move_toward(velocity.x, fv.x, 12.0 * delta), move_toward(velocity.y, -30.0, 14.0 * delta), move_toward(velocity.z, fv.z, 12.0 * delta))
+		if fl.length() > 1: _turn_to(land_target, delta)
+		move_and_slide()
+		if global_position.y - game.height(global_position.x, global_position.z) < 35.0 + randf() * 6.0:
+			falling = false; gliding = true; glider.visible = true
+		if is_on_floor(): falling = false; think_t = 0
+		return
 	if gliding:
 		var flat := Vector3(land_target.x - global_position.x, 0, land_target.z - global_position.z)
 		var v := flat.limit_length(1.0) * 12.0
@@ -297,7 +315,7 @@ func _physics_process(delta: float) -> void:
 	# LOD: think less often when far from the player (mobile friendly).
 	think_t -= delta
 	if think_t <= 0:
-		var far := is_instance_valid(game.player) and global_position.distance_to(game.player.global_position) > 90.0
+		var far: bool = game.nearest_human_dist(global_position) > 90.0
 		think_t = randf_range(0.25, 0.35) * (3.0 if far else 1.0)
 		_think()
 	debug_label.visible = Util.debug_ai

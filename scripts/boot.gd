@@ -20,6 +20,8 @@ var shown := 0.0
 var tip_i := 0
 
 func _ready() -> void:
+	if Net.dedicated: # headless dedicated server: skip the loading screen and lobby UI
+		get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn"); set_process(false); return
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	var bg := TextureRect.new(); bg.set_anchors_and_offsets_preset(PRESET_FULL_RECT); bg.stretch_mode = TextureRect.STRETCH_SCALE
 	var gt := GradientTexture2D.new(); var g := Gradient.new()
