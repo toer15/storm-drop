@@ -2,6 +2,24 @@ extends Node
 ## Autoload: shared settings and primitive-building helpers.
 var sensitivity := 0.25
 var bot_count := 15
+## Screenshot mode: `godot -- --shot=res_or_user_path.png [--tab=Locker] [--delay=4]` saves the screen then quits.
+var shot_path := ""
+var shot_tab := ""
+var shot_delay := 4.0
+var hold_boot := false
+
+func _ready() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--shot="): shot_path = a.substr(7)
+		elif a.begins_with("--tab="): shot_tab = a.substr(6)
+		elif a.begins_with("--delay="): shot_delay = float(a.substr(8))
+		elif a == "--hold-boot": hold_boot = true
+		elif a == "--touch": touch_enabled = true
+	if shot_path != "":
+		await get_tree().create_timer(shot_delay).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(shot_path)
+		get_tree().quit()
 ## Touch controls: shown automatically on touch devices, can be toggled in Settings.
 var touch_enabled := DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") \
 	or OS.has_feature("web_android") or OS.has_feature("web_ios")
@@ -23,29 +41,57 @@ func mesh(m: Mesh, c: Color, pos := Vector3.ZERO) -> MeshInstance3D:
 func box(size: Vector3) -> BoxMesh:
 	var b := BoxMesh.new(); b.size = size; return b
 
-const CHARACTERS := ["res://assets/characters/character-male-a.glb", "res://assets/characters/character-female-b.glb",
-	"res://assets/characters/character-male-c.glb", "res://assets/characters/character-female-d.glb"]
+var CHARACTERS: Array = ["a", "b", "c", "d", "e", "f"].map(func(x): return "res://assets/characters/character-male-%s.glb" % x) + \
+	["a", "b", "c", "d", "e", "f"].map(func(x): return "res://assets/characters/character-female-%s.glb" % x)
 const SFX_PATHS := {
 	"shoot": "res://assets/audio/shoot.ogg", "reload": "res://assets/audio/reload.ogg",
 	"build": "res://assets/audio/build.ogg", "hit": "res://assets/audio/hit.ogg",
 	"click": "res://assets/audio/click.ogg", "victory": "res://assets/audio/victory.ogg",
 	"eliminated": "res://assets/audio/eliminated.ogg",
 	"step0": "res://assets/audio/footstep_grass_000.ogg", "step1": "res://assets/audio/footstep_grass_001.ogg",
-	"step2": "res://assets/audio/footstep_grass_002.ogg",
+	"step2": "res://assets/audio/footstep_grass_002.ogg", "coin": "res://assets/audio/click.ogg",
 }
 
-## Kenney Mini Character (CC0) holding a Kenney blaster. `_c` kept for API compatibility.
-func make_character(_c: Color, idx := -1) -> Node3D:
+## Kenney Mini Character (CC0) with cosmetics. skin/backbling/pickaxe are Profile catalog ids ("" = random skin, none).
+func make_character(skin := "", backbling := "bb_none", pickaxe := "pick_default") -> Node3D:
 	var root := Node3D.new(); root.name = "Model"
-	var model: Node3D = load(CHARACTERS[idx if idx >= 0 else randi() % CHARACTERS.size()]).instantiate()
+	var path: String
+	if skin == "": path = CHARACTERS[randi() % CHARACTERS.size()]
+	else: path = Profile.CATALOG[skin].data.model
+	var model: Node3D = load(path).instantiate()
 	model.scale = Vector3.ONE * 2.7
 	model.rotation.y = PI # Kenney models face +Z, our forward is -Z
 	root.add_child(model)
-	var gun: Node3D = load("res://assets/weapons/blaster-a.glb").instantiate()
+	var gun: Node3D = load("res://assets/weapons/blaster-a.glb").instantiate(); gun.name = "Gun"
 	gun.scale = Vector3.ONE * 0.9; gun.position = Vector3(0.35, 1.0, -0.35); gun.rotation.y = PI
 	root.add_child(gun)
+	var pick := Node3D.new(); pick.name = "Pickaxe"; pick.position = Vector3(0.45, 0.75, -0.1); pick.rotation = Vector3(-0.9, 0, -0.3); pick.visible = false
+	var pc: Color = Profile.CATALOG.get(pickaxe, Profile.CATALOG["pick_default"]).data.color
+	pick.add_child(mesh(box(Vector3(0.08, 1.0, 0.08)), Color(0.4, 0.25, 0.1), Vector3(0, 0.3, 0)))
+	var head := mesh(box(Vector3(0.6, 0.15, 0.15)), pc, Vector3(0, 0.8, 0))
+	head.material_override.emission_enabled = true; head.material_override.emission = pc * 0.4
+	pick.add_child(head); root.add_child(pick)
+	var bb: Dictionary = Profile.CATALOG.get(backbling, {}).get("data", {"shape": "none"})
+	if bb.shape != "none":
+		var m: Mesh
+		match bb.shape:
+			"box": m = box(Vector3(0.5, 0.6, 0.25))
+			"sphere": var sp := SphereMesh.new(); sp.radius = 0.3; sp.height = 0.6; m = sp
+			"cylinder": var cy := CylinderMesh.new(); cy.top_radius = 0.15; cy.bottom_radius = 0.15; cy.height = 0.7; m = cy
+			_: var pr := PrismMesh.new(); pr.size = Vector3(0.4, 0.7, 0.3); m = pr
+		var bm := mesh(m, bb.color, Vector3(0, 1.15, 0.35)); bm.name = "BackBling"
+		bm.material_override.emission_enabled = true; bm.material_override.emission = bb.color * 0.3
+		root.add_child(bm)
 	play_anim(root, "holding-right")
 	return root
+
+## Show the pickaxe or the gun (tinted by rarity colour).
+func hold(model: Node3D, pickaxe: bool, tint := Color.WHITE) -> void:
+	var gun: Node3D = model.get_node("Gun"); var pick: Node3D = model.get_node("Pickaxe")
+	gun.visible = not pickaxe; pick.visible = pickaxe
+	var ov := StandardMaterial3D.new(); ov.albedo_color = Color(tint, 0.35)
+	ov.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ov.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for mi in gun.find_children("*", "MeshInstance3D", true, false): mi.material_overlay = ov
 
 func anim_player(model: Node) -> AnimationPlayer:
 	var aps := model.find_children("*", "AnimationPlayer", true, false)
@@ -56,7 +102,7 @@ func play_anim(model: Node, anim: String) -> void:
 	if ap == null or not ap.has_animation(anim): return
 	if ap.current_animation != anim:
 		var a := ap.get_animation(anim)
-		if anim in ["idle", "walk", "sprint", "holding-right", "fall"]: a.loop_mode = Animation.LOOP_LINEAR
+		if anim in ["idle", "walk", "sprint", "holding-right", "fall", "sit", "drive"]: a.loop_mode = Animation.LOOP_LINEAR
 		ap.play(anim, 0.15)
 
 var _sfx_cache := {}
