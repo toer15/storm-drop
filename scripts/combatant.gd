@@ -21,6 +21,11 @@ var aim_pitch := 0.0
 signal fired(w)
 var model: Node3D
 var step_t := 0.0
+var cur_anim := "idle"
+
+## Can bots see / shoot this combatant? (not while in the bus or in the air)
+func targetable() -> bool:
+	return alive
 
 func weapon() -> Dictionary:
 	return slots[current] if slots[current] != null else {}
@@ -45,11 +50,14 @@ func take_damage(amount: float, killer = null) -> void:
 	last_hit_time = now()
 	if killer is Combatant and killer != self: last_attacker = killer
 	var s: float = min(shield, amount); shield -= s; health -= amount - s
+	var g = get_tree().current_scene if is_inside_tree() else null
 	if health <= 0:
 		health = 0; alive = false
 		if model: Util.play_anim(model, "die")
 		if killer is Combatant and killer != self: killer.kills += 1
+		if g and g.has_method("on_damage"): g.on_damage(self, killer, true)
 		died.emit(self, killer)
+	elif g and g.has_method("on_damage"): g.on_damage(self, killer, false)
 
 func select_slot(i: int) -> void:
 	if i < 0 or i >= slots.size() or (i > 0 and slots[i] == null): return
@@ -92,6 +100,9 @@ func fire(origin: Vector3, dir: Vector3, extra_spread := 0.0):
 		var d := (dir + Vector3(randf_range(-sp, sp), randf_range(-sp, sp), randf_range(-sp, sp))).normalized()
 		end = _ray(origin, d, w.range, w.damage, Weapons.color(w))
 	if w.has("splash"): _explode(end, w.splash, w.damage)
+	if Net.active():
+		var g = get_tree().current_scene
+		if g and g.has_method("net_shot"): g.net_shot(self, origin, end, w.get("sound", "shoot"), w.type in ["shotgun", "rocket", "sniper"])
 	return end
 
 ## Rocket impact: splash damage with falloff, flash + smoke puff.
@@ -102,6 +113,7 @@ func _explode(at: Vector3, radius: float, dmg: float) -> void:
 			if d < radius: c.take_damage(dmg * (1.0 - d / radius) * 0.8, self)
 	for b in get_tree().get_nodes_in_group("built"):
 		if is_instance_valid(b) and b.global_position.distance_to(at) < radius and b.has_method("take_damage"): b.take_damage(200.0, self)
+	if Net.dedicated: return
 	Util.sfx("shotgun", at, 4.0)
 	var fx := Node3D.new(); get_tree().current_scene.add_child(fx); fx.global_position = at
 	var ball := Util.mesh(SphereMesh.new(), Color(1, 0.6, 0.2)); ball.material_override.emission_enabled = true
@@ -166,10 +178,11 @@ func _physics_process(delta: float) -> void:
 	_shot_anim -= delta; _reload_anim -= delta
 	if not alive or model == null: return
 	var hs := Vector2(velocity.x, velocity.z).length()
-	Util.play_anim(model, base_anim(hs))
+	cur_anim = base_anim(hs)
+	Util.play_anim(model, cur_anim)
 	if is_on_floor() and hs > 0.5:
 		step_t -= delta * hs / 6.0
-		if step_t <= 0:
+		if step_t <= 0 and not Net.dedicated:
 			step_t = 0.4
 			Util.sfx("step%d" % (randi() % 3), global_position, -8.0 if self is Bot else -2.0)
 
