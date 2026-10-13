@@ -76,9 +76,9 @@ func drop() -> void:
 	$CollisionShape3D.disabled = false
 
 func base_anim(hs: float) -> String:
-	if gliding: return "drive"
+	if gliding: return "glide"
 	if action_anim_t > 0: return action_anim
-	if crouching and hs < 1.0 and is_on_floor(): return "crouch"
+	if crouching and is_on_floor(): return "crouch" if hs < 1.0 else "crouch-walk"
 	return super(hs)
 
 func _play_action(a: String, t: float) -> void:
@@ -214,7 +214,7 @@ func _build_cover() -> void:
 	piece.global_position = global_position + dir * 2.2 + Vector3(0, 1.5, 0)
 	piece.look_at(piece.global_position + dir)
 	if ramp: piece.rotate_object_local(Vector3.RIGHT, deg_to_rad(36.87))
-	_play_action("interact-right", 0.4)
+	_play_action("build", 0.4)
 	Util.sfx("build", global_position, -6)
 
 func _move_to(p: Vector3, speed: float, delta: float, face := true) -> void:
@@ -279,6 +279,7 @@ func _combat(delta: float) -> void:
 	if crouching: err *= 0.7
 	var gun := global_position + Vector3(0, 1.4, 0)
 	var aim := enemy.global_position + Vector3(0, 1.1, 0) + enemy.velocity * dist / 200.0 * skill # lead targets
+	aim_pitch = asin(clampf((aim - gun).normalized().y, -1, 1))
 	fire(gun, (aim - gun).normalized(), err)
 
 func _physics_process(delta: float) -> void:
@@ -309,7 +310,7 @@ func _physics_process(delta: float) -> void:
 				_move_to(target_node.global_position, 6.5, delta)
 				if global_position.distance_to(target_node.global_position) < 2.2:
 					if act == Act.OPEN_CHEST:
-						select_slot(0); _play_action("interact-right", 0.6); game.open_chest(self, target_node)
+						select_slot(0); _play_action("open-chest", 1.0); game.open_chest(self, target_node)
 					else: game.bot_try_pickup(self)
 					think_t = 0
 			if is_instance_valid(enemy) and current > 0 and now() - enemy_seen_at > reaction and randf() < 0.1:

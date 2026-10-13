@@ -13,6 +13,11 @@ var ghost: MeshInstance3D
 var glider: Node3D
 var emote_t := 0.0
 const GRID := 4.0
+## First-person mode (V): camera at the eyes, body hidden, a view-model gun with recoil / reload / muzzle flash.
+var fp := false
+var view: Node3D
+var _view_kick := 0.0
+var _view_type := ""
 
 func _ready() -> void:
 	display_name = "You"
@@ -23,6 +28,9 @@ func _ready() -> void:
 	spring = SpringArm3D.new(); spring.spring_length = 4.0; spring.position.x = 0.7
 	spring.add_excluded_object(get_rid()); pivot.add_child(spring)
 	cam = Camera3D.new(); cam.current = true; cam.far = 600; spring.add_child(cam)
+	view = Node3D.new(); view.name = "ViewModel"; cam.add_child(view); view.visible = false
+	fired.connect(func(w): _view_kick = 1.0; if fp and view.get_child_count() > 0: Util.muzzle_flash(view.get_child(0), w.type in ["shotgun", "rocket", "sniper"]))
+	if "--fp" in OS.get_cmdline_user_args(): set_first_person(true)
 	ghost = MeshInstance3D.new(); ghost.material_override = Util.mat(Color(0.3, 0.7, 1, 0.4))
 	ghost.visible = false; ghost.top_level = true; add_child(ghost)
 	glider = Node3D.new(); glider.visible = false; add_child(glider)
@@ -50,8 +58,38 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_E: interact()
 			KEY_B: emote()
 			KEY_F3: Util.debug_ai = not Util.debug_ai
+			KEY_V: set_first_person(not fp)
 			KEY_SPACE: if state == State.BUS: jump_from_bus()
 			KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func set_first_person(on: bool) -> void:
+	fp = on; _view_type = ""
+
+func _update_view(delta: float) -> void:
+	var on := fp and state == State.GROUND and alive
+	if model: model.visible = not on
+	view.visible = on
+	spring.position.x = 0.0 if on else 0.7
+	if not on: return
+	spring.spring_length = 0.0
+	var want := "pick" if current == 0 else String(weapon().get("type", "ar"))
+	if want != _view_type:
+		for c in view.get_children(): c.free()
+		var g: Node3D = Gear.make_pickaxe(Profile.equipped.pickaxe) if current == 0 else Gear.make_gun(want)
+		view.add_child(g); _view_type = want
+		for mi: MeshInstance3D in g.find_children("*", "MeshInstance3D", true, false): mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_view_kick = move_toward(_view_kick, 0.0, delta * 6.0)
+	var bob := sin(Time.get_ticks_msec() * 0.012) * 0.012 * clampf(Vector2(velocity.x, velocity.z).length() / 6.0, 0, 1)
+	var g: Node3D = view.get_child(0)
+	if current == 0:
+		var sw := clampf(_shot_anim / 0.3, 0, 1)
+		g.position = Vector3(0.32, -0.42 + bob, -0.55); g.rotation = Vector3(-0.5 - sw * 1.2, 0.3, -0.3)
+	else:
+		var rl := clampf(_reload_anim / 1.4, 0, 1); var dip := sin(rl * PI)
+		g.position = Vector3(0.17, -0.17 + bob - dip * 0.15, -0.42 + _view_kick * 0.06)
+		g.rotation = Vector3(_view_kick * 0.1 - dip * 0.5, 0.04, dip * 0.6)
+		g.scale = Vector3.ONE * {"pistol": 1.5, "smg": 1.0}.get(_view_type, 0.75)
+		if _view_type == "pistol": g.position += Vector3(-0.03, 0.05, 0.08)
 
 func interact() -> void:
 	if game and state == State.GROUND: game.interact(self)
@@ -107,7 +145,7 @@ func _place() -> void:
 
 func base_anim(hs: float) -> String:
 	if state == State.BUS: return "sit"
-	if state == State.GLIDE: return "drive"
+	if state == State.GLIDE: return "glide"
 	if emote_t > 0 and hs < 0.5 and is_on_floor(): return Profile.item("emote").data.anim
 	return super(hs)
 
@@ -121,7 +159,9 @@ func _physics_process(delta: float) -> void:
 		Util.touch_look = Vector2.ZERO
 	rotation.y = yaw
 	$Pivot.rotation.x = pitch
+	aim_pitch = pitch
 	spring.spring_length = 4.0 if state == State.GROUND else 9.0
+	_update_view(delta)
 	var input := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W): input.y -= 1
 	if Input.is_physical_key_pressed(KEY_S): input.y += 1
