@@ -7,8 +7,9 @@ var think := 0.0
 var enemy: Combatant
 
 func _ready() -> void:
-	setup_body(Color.from_hsv(randf(), 0.7, 0.9))
-	damage = 6.0
+	setup_body("")
+	var w := Weapons.random_drop(); w.damage *= 0.5 # bots are a bit weaker than players
+	give_weapon(w)
 
 func _physics_process(delta: float) -> void:
 	super(delta)
@@ -20,6 +21,7 @@ func _physics_process(delta: float) -> void:
 		var best := 40.0
 		for c in game.combatants:
 			if not is_instance_valid(c) or c == self or not c.alive: continue
+			if c is Player and c.state == Player.State.BUS: continue
 			var d := global_position.distance_to(c.global_position)
 			if d < best: best = d; enemy = c
 		if global_position.distance_to(target_pos) < 3 or randf() < 0.05:
@@ -33,7 +35,8 @@ func _physics_process(delta: float) -> void:
 		else: dest = global_position + to.cross(Vector3.UP).normalized() * 3.0 # strafe
 		if randf() < 0.3:
 			var gun := global_position + Vector3(0, 1.4, 0)
-			fire(gun, (enemy.global_position + Vector3(0, 1, 0) - gun).normalized(), 0.08)
+			if weapon().get("ammo", 0) <= 0: reserve[ammo_kind(weapon())] = 99; reload()
+			fire(gun, (enemy.global_position + Vector3(0, 1, 0) - gun).normalized(), 0.06)
 	var flat := Vector3(dest.x - global_position.x, 0, dest.z - global_position.z)
 	if flat.length() > 0.5:
 		var v := flat.normalized() * 5.0; velocity.x = v.x; velocity.z = v.z

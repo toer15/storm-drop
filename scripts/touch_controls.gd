@@ -9,7 +9,7 @@ var knob: Panel
 const R := 90.0
 
 func _ready() -> void:
-	set_anchors_preset(PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	mouse_filter = MOUSE_FILTER_IGNORE
 	base = _circle(R * 2, Color(1, 1, 1, 0.15)); knob = _circle(70, Color(1, 1, 1, 0.4))
 	base.visible = false; knob.visible = false
@@ -19,10 +19,12 @@ func _ready() -> void:
 		["JUMP", "jump", 110, Vector2(-150, -170)],
 		["RELOAD", func(): player.reload(), 90, Vector2(-290, -150)],
 		["SPRINT", "sprint", 90, Vector2(-330, -280)],
+		["USE", func(): player.interact(), 90, Vector2(-290, -420)],
+		["EMOTE", func(): player.emote(), 80, Vector2(-120, -440)],
 		["WALL", func(): player._toggle(1), 80, Vector2(-450, -110)],
 		["FLOOR", func(): player._toggle(2), 80, Vector2(-540, -110)],
 		["RAMP", func(): player._toggle(3), 80, Vector2(-630, -110)],
-		["GUN", func(): player._toggle(0), 80, Vector2(-720, -110)],
+		["SWAP", func(): player.cycle_slot(), 80, Vector2(-720, -110)],
 	]
 	for d in defs: _button(d[0], d[1], d[2], d[3])
 
