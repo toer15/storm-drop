@@ -78,3 +78,11 @@ Prebuilt Windows, Linux, Web and Android (APK) builds are on the [Releases page]
 
 ## License
 MIT. See [LICENSE](LICENSE). This is a fan-made original game and is not affiliated with any other battle-royale game.
+
+## v1.2.0 — Visual overhaul & human-like AI
+- **Look:** PBR terrain blend (grass/sand/rock by height & slope, Poly Haven CC0 textures), HDRI sky, soft-shadow sun, SSAO/glow/fog on desktop (lighter on mobile/web), rim light + ink outline, wavy fresnel water with shore foam, wind-swayed foliage, more house types, randomised bot outfits.
+- **Bots ride the Battle Bus** and glide to their own drop spots.
+- **Utility AI:** every ~0.3 s each bot scores Roam, Loot weapon, Open chest, Rotate, Engage, Third-party, Retreat, Heal, Build cover and Camp, with hysteresis. Personalities: Aggressive, Cautious, Looter, Builder.
+- **Movement:** runtime-baked NavigationRegion3D + NavigationAgent3D, acceleration/turning, strafing, jump spam, crouch peeks, reaction time & aim error by skill, spray vs tap fire, builds walls/ramps when shot.
+- **Difficulty** (Easy/Normal/Hard) in Settings. **AI debug overlay:** Settings checkbox or **F3** in match shows each bot's persona and current decision.
+- Mobile performance: staggered thinking (slower for far bots), lighter post-processing.

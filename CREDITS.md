@@ -28,3 +28,8 @@ These were made in code because no suitable redistributable asset fit (or a code
 Quaternius (Ultimate Animated Character Pack, Animated Men; CC0), Poly Pizza, OpenGameArt, itch.io CC0 and Sketchfab CC0/CC-BY were checked as well. Kenney's Mini Characters were picked because they ship as GLB with a full matching set of animations (idle, walk, sprint, jump, fall, holding/shooting, melee, die and emotes) on one rig, are tiny (~250 KB each, good for phones) and are CC0, so they are fine to redistribute.
 
 The assets are downloaded by `tools/fetch_assets.py` rather than stored in git.
+
+## Added in v1.2.0
+- **Poly Haven** (https://polyhaven.com) — CC0: textures `leafy_grass`, `coast_sand_01`, `rocky_terrain_02`; HDRI `kloofendal_48d_partly_cloudy_puresky` (Greg Zaal / Poly Haven). Downloaded by `tools/fetch_assets.py`.
+- Sources checked but not used: Quaternius, Poly Pizza, Sketchfab CC0/CC-BY, ambientCG (Kenney + Poly Haven already covered the needs in one consistent style).
+- Procedural (made in this project): terrain blend, water, outline/rim shaders, storm wall, bus/glider, chests, build pieces, island height map.
