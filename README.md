@@ -29,6 +29,27 @@ Everything is built from primitive meshes and code-generated materials, so there
 | 1 | Back to weapon |
 | Esc | Release the mouse |
 
+## Play on your phone
+- **Browser:** open **https://toer15.github.io/storm-drop/** in Chrome (Android) or Safari (iOS), turn your phone sideways, and tap to start. "Add to Home Screen" installs it like an app (PWA).
+- **Android APK:** in Godot, install the Android export templates and an Android SDK/debug keystore (Editor Settings > Export > Android), then **Project > Export > Android > Export Project**.
+
+### Touch controls
+Shown automatically on touchscreens; toggle them in **Settings > Touch controls**.
+| Control | Action |
+|---|---|
+| Left side drag (virtual joystick) | Move |
+| Right side drag | Look |
+| FIRE | Shoot (hold), or place a piece in build mode |
+| JUMP / SPRINT (hold) | Jump / sprint |
+| RELOAD | Reload |
+| WALL / FLOOR / RAMP / GUN | Build modes / back to weapon |
+| II (top centre) | Leave the match |
+
+The UI scales to any screen size (stretch mode `canvas_items`, aspect `expand`), the game is locked to landscape, and it uses the Compatibility (OpenGL ES 3 / WebGL 2) renderer so it runs on phones and in browsers. The web export has threads disabled, so it needs no special server headers.
+
+## Web build / GitHub Pages
+Each push to `main` runs `.github/workflows/web.yml`, which exports the Web build and publishes it to the `gh-pages` branch. To build it yourself: `godot --headless --export-release "Web" build/web/index.html`, then serve `build/web` over HTTP.
+
 ## How to run
 1. Install [Godot 4.3+](https://godotengine.org/download) (standard version, not .NET).
 2. Open Godot, click **Import**, and select `project.godot` in this folder.
