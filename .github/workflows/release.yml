@@ -50,7 +50,11 @@ jobs:
           ls ~/.config/godot/ /root/.config/godot/ || true
           EP=$(ls ~/.config/godot/editor_settings-4*.tres 2>/dev/null | head -1)
           if [ -z "$EP" ]; then EP=~/.config/godot/editor_settings-4.3.tres; mkdir -p ~/.config/godot; printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\n' > $EP; fi
-          grep -q android_sdk_path $EP || echo "export/android/android_sdk_path = \"$SDK\"" >> $EP
+          JAVA=${JAVA_HOME:-$(dirname $(dirname $(readlink -f $(which java))))}
+          echo "SDK=$SDK JAVA=$JAVA EP=$EP"
+          sed -i '/android_sdk_path\|java_sdk_path/d' $EP
+          echo "export/android/android_sdk_path = \"$SDK\"" >> $EP
+          echo "export/android/java_sdk_path = \"$JAVA\"" >> $EP
           godot --headless --export-debug "Android" build/android/StormDrop.apk
           BT=$(ls -d $SDK/build-tools/* | tail -1)
           $BT/apksigner verify --verbose build/android/StormDrop.apk
