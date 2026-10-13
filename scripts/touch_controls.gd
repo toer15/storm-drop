@@ -25,6 +25,7 @@ func _ready() -> void:
 		["FLOOR", func(): player._toggle(2), 80, Vector2(-540, -110)],
 		["RAMP", func(): player._toggle(3), 80, Vector2(-630, -110)],
 		["SWAP", func(): player.cycle_slot(), 80, Vector2(-720, -110)],
+		["VIEW", func(): player.set_first_person(not player.fp), 70, Vector2(-110, -560)],
 	]
 	for d in defs: _button(d[0], d[1], d[2], d[3])
 
