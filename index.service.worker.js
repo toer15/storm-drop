@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1791926863|3846978';
+const CACHE_VERSION = '1791926895|3122921';
 /** @type {string} */
 const CACHE_PREFIX = 'Storm Drop-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
