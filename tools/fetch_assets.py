@@ -16,6 +16,8 @@ PACKS = {
     "jingles": K + "music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip",
     "particles": K + "particle-pack/f8fe0f8cb8-1677578741/kenney_particle-pack.zip",
     "rpg": K + "rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+    "commercial": K + "city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip",
+    "industrial": K + "city-kit-industrial/0ec35b139d-1788171848/kenney_city-kit-industrial_2.0.zip",
 }
 G = "Models/GLB format/"
 FILES = [  # (pack, path inside zip, destination under assets/)
@@ -35,6 +37,14 @@ FILES = [  # (pack, path inside zip, destination under assets/)
     ("particles", "PNG (Transparent)/smoke_04.png", "fx13/smoke.png"),
     ("jingles", "Audio/8-Bit jingles/jingles_NES00.ogg", "audio/victory.ogg"),
     ("jingles", "Audio/Hit jingles/jingles_HIT05.ogg", "audio/eliminated.ogg"),
+    # v1.4 map: Kenney City Kit (Commercial) skyscrapers/shops + low-detail LOD versions, City Kit (Industrial) (CC0)
+    *[("commercial", G + f"{n}.glb", f"city14/{n}.glb") for n in
+      [f"building-skyscraper-{c}" for c in "abcde"] + [f"building-{c}" for c in "abcdefgh"] + [f"low-detail-building-{c}" for c in "abcdefgh"]],
+    ("commercial", G + "Textures/colormap.png", "city14/Textures/colormap.png"),
+    *[("industrial", G + f"{n}.glb", f"industry14/{n}.glb") for n in
+      [f"building-{c}" for c in "abcdefgh"] + ["chimney-large", "detail-tank-large", "detail-tank", "shipping-container-a",
+       "shipping-container-b", "shipping-container-c", "water-tower", "windmill"]],
+    ("industrial", G + "Textures/colormap.png", "industry14/Textures/colormap.png"),
 ]
 
 PH = "https://dl.polyhaven.org/file/ph-assets/"
@@ -75,6 +85,9 @@ POLY = [
     ("0bf6e981-5d81-446b-aeda-1908bc8d7990", "props13/chest.glb"),          # Quaternius CC0 (animated)
     ("4e925a01-dbb8-4aab-848b-221306b835ea", "props13/pickup_truck.glb"),                                # Quaternius CC0
     ("840253f1-676f-4d91-bd5c-9c6e3647ba73", "props13/stationwagon.glb"),                                 # Kay Lousberg CC0
+    # v1.4 Battle Bus (both CC-BY 3.0, credit in CREDITS.md)
+    ("635a02b7-4260-42a5-bd52-987511d6e3e0", "bus14/bus.glb"),          # "Bus" by Poly by Google
+    ("4feb9a6e-8399-47f5-864b-b48516ec7c0f", "bus14/balloon.glb"),      # "Hot air balloon" by Poly by Google
 ]
 OGA = "https://opengameart.org/sites/default/files/"
 ZIPS = [  # (zip url, member suffix, destination)
