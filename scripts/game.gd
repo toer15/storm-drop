@@ -10,6 +10,7 @@ var phase := 0
 var phase_timer := 30.0
 var shrinking := false
 var storm_mesh: MeshInstance3D
+var storm_audio: AudioStreamPlayer
 var hud := {}
 var minimap: Control
 var over := false
@@ -59,28 +60,28 @@ func _rand_point(r := ISLAND * 0.85) -> Vector3:
 	var a := randf() * TAU; var d := sqrt(randf()) * r
 	return _ground(cos(a) * d, sin(a) * d)
 
+const TREES := ["res://assets/nature/tree_default.glb", "res://assets/nature/tree_cone.glb",
+	"res://assets/nature/tree_detailed.glb", "res://assets/nature/tree_oak.glb"]
+const ROCKS := ["res://assets/nature/rock_largeA.glb", "res://assets/nature/rock_largeC.glb",
+	"res://assets/nature/rock_tallA.glb", "res://assets/nature/rock_smallA.glb"]
+const HOUSES := ["res://assets/buildings/building-type-a.glb", "res://assets/buildings/building-type-c.glb",
+	"res://assets/buildings/building-type-f.glb", "res://assets/buildings/building-type-k.glb"]
+
 func _props() -> void:
-	for i in 120: # trees
-		var p := _rand_point(); var t := Util.static_box(Vector3(0.6, 4, 0.6), Color(0.45, 0.3, 0.15), p + Vector3(0, 2, 0))
-		var cone := CylinderMesh.new(); cone.top_radius = 0; cone.bottom_radius = 2; cone.height = 4
-		t.add_child(Util.mesh(cone, Color(0.1, 0.5, 0.2), Vector3(0, 3.5, 0))); add_child(t)
-	for i in 50: # rocks
-		var p := _rand_point(); var r := StaticBody3D.new(); r.position = p
-		var s := SphereMesh.new(); var rad := randf_range(0.8, 2.2); s.radius = rad; s.height = rad * 1.4
-		r.add_child(Util.mesh(s, Color(0.5, 0.5, 0.55)))
-		var cs := CollisionShape3D.new(); var sh := SphereShape3D.new(); sh.radius = rad * 0.7; cs.shape = sh; r.add_child(cs)
-		add_child(r)
-	for i in 12: # houses: 4 walls with a door gap + roof
-		var p := _rand_point(ISLAND * 0.7); var h := Node3D.new(); h.position = p; h.rotation.y = randf() * TAU
-		var c := Color.from_hsv(randf(), 0.4, 0.9)
-		h.add_child(Util.static_box(Vector3(8, 4, 0.3), c, Vector3(0, 2, -4)))
-		h.add_child(Util.static_box(Vector3(0.3, 4, 8), c, Vector3(-4, 2, 0)))
-		h.add_child(Util.static_box(Vector3(0.3, 4, 8), c, Vector3(4, 2, 0)))
-		h.add_child(Util.static_box(Vector3(3, 4, 0.3), c, Vector3(-2.5, 2, 4)))
-		h.add_child(Util.static_box(Vector3(3, 4, 0.3), c, Vector3(2.5, 2, 4)))
-		h.add_child(Util.static_box(Vector3(8.6, 0.3, 8.6), Color(0.6, 0.2, 0.2), Vector3(0, 4.1, 0)))
-		h.add_child(Util.static_box(Vector3(8, 0.2, 8), Color(0.5, 0.4, 0.3), Vector3(0, 0.1, 0)))
-		add_child(h)
+	# Kenney Nature Kit trees: cheap cylinder collider for the trunk instead of trimesh.
+	var tree_scenes := TREES.map(func(p): return load(p))
+	for i in 100:
+		var p := _rand_point(); var t := StaticBody3D.new(); t.position = p
+		var m: Node3D = tree_scenes[randi() % tree_scenes.size()].instantiate()
+		var sc := randf_range(4.5, 6.5); m.scale = Vector3.ONE * sc; m.rotation.y = randf() * TAU; t.add_child(m)
+		var cs := CollisionShape3D.new(); var cyl := CylinderShape3D.new(); cyl.radius = 0.5; cyl.height = 6
+		cs.shape = cyl; cs.position.y = 3; t.add_child(cs); add_child(t)
+	for i in 40:
+		var r := Util.static_model(ROCKS[randi() % ROCKS.size()], randf_range(3, 5), _rand_point() - Vector3(0, 0.3, 0))
+		r.rotation.y = randf() * TAU; add_child(r)
+	for i in 10: # Kenney City Kit (Suburban) houses
+		var h := Util.static_model(HOUSES[i % HOUSES.size()], 8.0, _rand_point(ISLAND * 0.7) - Vector3(0, 0.2, 0))
+		h.rotation.y = randi() % 4 * PI / 2; add_child(h)
 
 func _storm() -> void:
 	var cyl := CylinderMesh.new(); cyl.top_radius = 1; cyl.bottom_radius = 1; cyl.height = 200
@@ -88,6 +89,8 @@ func _storm() -> void:
 	storm_mesh = Util.mesh(cyl, Color(0.6, 0.2, 1, 0.35))
 	storm_mesh.material_override.cull_mode = BaseMaterial3D.CULL_DISABLED
 	add_child(storm_mesh)
+	storm_audio = AudioStreamPlayer.new(); var st: AudioStreamOggVorbis = load("res://assets/audio/storm.ogg").duplicate()
+	st.loop = true; storm_audio.stream = st; storm_audio.volume_db = -80; add_child(storm_audio); storm_audio.play()
 
 func _spawn() -> void:
 	player = Player.new(); add_child(player); player.global_position = _rand_point() + Vector3(0, 2, 0)
@@ -105,7 +108,8 @@ func _on_died(who: Combatant, killer) -> void:
 	_feed("%s eliminated %s" % [kn, who.display_name])
 	if who == player: _end(false, kn)
 	else:
-		who.queue_free()
+		await get_tree().create_timer(1.2).timeout # let the death animation play
+		if is_instance_valid(who): who.queue_free()
 		await get_tree().process_frame
 		if _alive_count() == 1 and player.alive: _end(true, "")
 
@@ -134,6 +138,9 @@ func _process(delta: float) -> void:
 		if c.alive and flat.length() > storm_radius:
 			c.take_damage(delta * (2.0 + phase), null)
 		if c.alive and c.global_position.y < -20: c.take_damage(9999, null)
+	if is_instance_valid(player):
+		var pf := Vector2(player.global_position.x - storm_center.x, player.global_position.z - storm_center.z)
+		storm_audio.volume_db = -4.0 if (pf.length() > storm_radius and player.alive) else -80.0
 	_update_hud()
 
 # ---------------- HUD ----------------
@@ -198,6 +205,7 @@ func _draw_minimap() -> void:
 func _end(won: bool, killer: String) -> void:
 	if over: return
 	over = true
+	Util.sfx("victory" if won else "eliminated")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var panel := ColorRect.new(); panel.color = Color(0, 0, 0, 0.6); panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.layer.add_child(panel)
