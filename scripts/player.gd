@@ -1,7 +1,9 @@
 class_name Player
 extends Combatant
 ## Third-person controller: battle bus drop + glider, building, pickaxe, inventory, emotes.
-enum State { BUS, GLIDE, GROUND }
+enum State { BUS, FALL, GLIDE, GROUND }
+var seat := 0
+var fall_t := 0.0
 var state := State.GROUND
 var game
 var yaw := 0.0
@@ -27,7 +29,7 @@ func _ready() -> void:
 	var pivot := Node3D.new(); pivot.name = "Pivot"; pivot.position.y = 1.6; add_child(pivot)
 	spring = SpringArm3D.new(); spring.spring_length = 4.0; spring.position.x = 0.7
 	spring.add_excluded_object(get_rid()); pivot.add_child(spring)
-	cam = Camera3D.new(); cam.current = true; cam.far = 600; spring.add_child(cam)
+	cam = Camera3D.new(); cam.current = true; cam.far = 900; spring.add_child(cam)
 	view = Node3D.new(); view.name = "ViewModel"; cam.add_child(view); view.visible = false
 	fired.connect(func(w): _view_kick = 1.0; if fp and view.get_child_count() > 0: Util.muzzle_flash(view.get_child(0), w.type in ["shotgun", "rocket", "sniper"]))
 	if "--fp" in OS.get_cmdline_user_args(): set_first_person(true)
@@ -59,11 +61,22 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_B: emote()
 			KEY_F3: Util.debug_ai = not Util.debug_ai
 			KEY_V: set_first_person(not fp)
-			KEY_SPACE: if state == State.BUS: jump_from_bus()
+			KEY_SPACE:
+				if state == State.BUS: jump_from_bus()
+				elif state == State.FALL and fall_t > 1.0: _open_glider()
 			KEY_ESCAPE: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func set_first_person(on: bool) -> void:
+	if state == State.BUS and game: game.toggle_bus_view(); return
 	fp = on; _view_type = ""
+
+func targetable() -> bool:
+	return alive and state == State.GROUND
+
+## Online clients: health is owned by the host, so local damage calls are ignored (the host's snapshot applies it).
+func take_damage(amount: float, killer = null) -> void:
+	if Net.is_client(): return
+	super(amount, killer)
 
 func _update_view(delta: float) -> void:
 	var on := fp and state == State.GROUND and alive
@@ -105,11 +118,19 @@ func emote() -> void:
 	emote_t = 3.0
 	Util.play_anim(model, Profile.item("emote").data.anim)
 
+## Leave through the back door: skydive first, the glider opens near the ground (or on SPACE / JUMP).
 func jump_from_bus() -> void:
 	if state != State.BUS: return
-	state = State.GLIDE; glider.visible = true; Util.touch_jump = false
-	velocity = Vector3.ZERO
+	if game: global_position = game.bus_exit_point(); yaw = atan2(-game.bus_dir.x, -game.bus_dir.z)
+	rotation = Vector3(0, yaw, 0); pitch = -0.35
+	state = State.FALL; fall_t = 0.0; glider.visible = false; Util.touch_jump = false
+	velocity = Vector3.ZERO; model.visible = true
 	$CollisionShape3D.disabled = false
+	cam.current = true
+	Util.sfx("build", global_position, -6)
+
+func _open_glider() -> void:
+	state = State.GLIDE; glider.visible = true; Util.touch_jump = false
 
 func _toggle(m: int) -> void:
 	build_mode = 0 if build_mode == m else m
@@ -138,13 +159,11 @@ func _place() -> void:
 	mats -= 10
 	Util.sfx("build", global_position)
 	var size: Vector3 = (ghost.mesh as BoxMesh).size
-	var piece := Util.static_box(size, Color(0.7, 0.5, 0.3), Vector3.ZERO)
-	piece.set_script(load("res://scripts/build_piece.gd"))
-	get_tree().current_scene.add_child(piece)
-	piece.global_transform = _piece_transform()
+	if game: game.request_build(_piece_transform(), size)
 
 func base_anim(hs: float) -> String:
 	if state == State.BUS: return "sit"
+	if state == State.FALL: return "skydive"
 	if state == State.GLIDE: return "glide"
 	if emote_t > 0 and hs < 0.5 and is_on_floor(): return Profile.item("emote").data.anim
 	return super(hs)
@@ -157,10 +176,13 @@ func _physics_process(delta: float) -> void:
 		yaw -= Util.touch_look.x * Util.sensitivity * 0.02
 		pitch = clamp(pitch - Util.touch_look.y * Util.sensitivity * 0.02, -1.3, 0.9)
 		Util.touch_look = Vector2.ZERO
-	rotation.y = yaw
-	$Pivot.rotation.x = pitch
+	if state == State.BUS: # seated: the game places us; the outside camera orbits the bus
+		$Pivot.rotation = Vector3(pitch, yaw, 0); spring.spring_length = 26.0
+		model.visible = game == null or not game.bus_view_inside
+	else:
+		rotation.y = yaw; $Pivot.rotation = Vector3(pitch, 0, 0)
+		spring.spring_length = 4.0 if state == State.GROUND else 9.0
 	aim_pitch = pitch
-	spring.spring_length = 4.0 if state == State.GROUND else 9.0
 	_update_view(delta)
 	var input := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W): input.y -= 1
@@ -174,6 +196,16 @@ func _physics_process(delta: float) -> void:
 		State.BUS:
 			if Util.touch_jump: jump_from_bus()
 			return # position is driven by the game (bus)
+		State.FALL:
+			fall_t += delta
+			var dive := clampf(-pitch, 0.0, 1.2) # look down to dive faster
+			velocity.x = move_toward(velocity.x, dir.x * 20.0, 14.0 * delta); velocity.z = move_toward(velocity.z, dir.z * 20.0, 14.0 * delta)
+			velocity.y = move_toward(velocity.y, -(20.0 + dive * 18.0), 14.0 * delta) # accelerate into the dive
+			move_and_slide()
+			var above: float = global_position.y - (game.height(global_position.x, global_position.z) if game else 0.0)
+			if above < 38.0 or (Util.touch_jump and fall_t > 1.0): _open_glider()
+			if is_on_floor(): state = State.GROUND
+			return
 		State.GLIDE:
 			velocity.x = dir.x * 14.0; velocity.z = dir.z * 14.0; velocity.y = -9.0
 			move_and_slide()
