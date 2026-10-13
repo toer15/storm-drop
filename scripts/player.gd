@@ -66,6 +66,7 @@ func _piece_transform() -> Transform3D:
 func _place() -> void:
 	if mats < 10: return
 	mats -= 10
+	Util.sfx("build", global_position)
 	var size: Vector3 = (ghost.mesh as BoxMesh).size
 	var piece := Util.static_box(size, Color(0.7, 0.5, 0.3), Vector3.ZERO)
 	piece.set_script(load("res://scripts/build_piece.gd"))

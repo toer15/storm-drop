@@ -1,9 +1,11 @@
 # Storm Drop
 
 An original, open-source battle-royale prototype made with **Godot 4** (GDScript).
-Everything is built from primitive meshes and code-generated materials, so there are no external assets.
+It uses free CC0 low-poly 3D models and sounds from [Kenney](https://kenney.nl) (see [CREDITS.md](CREDITS.md)); the island, storm and build pieces are generated in code.
 
 ## Features
+- Animated low-poly characters (idle, walk, sprint, jump, shoot, death), a blaster model, trees, rocks and houses from Kenney (CC0)
+- Sound effects: gunshots, reload, building, footsteps, hit markers, storm hum, UI clicks, victory/elimination jingles
 - Loading screen with title, progress bar, and rotating tips (async `ResourceLoader.load_threaded_request`)
 - Main menu (Play / Settings / Quit) over a rotating 3D lobby background
 - Settings: mouse sensitivity, bot count, fullscreen
@@ -51,11 +53,15 @@ The UI scales to any screen size (stretch mode `canvas_items`, aspect `expand`),
 Each push to `main` runs `.github/workflows/web.yml`, which exports the Web build and publishes it to the `gh-pages` branch. To build it yourself: `godot --headless --export-release "Web" build/web/index.html`, then serve `build/web` over HTTP.
 
 ## How to run
+0. **Fetch the art and sound (one time):** `python3 tools/fetch_assets.py` downloads the CC0 Kenney packs and copies the needed files into `assets/` (they aren't stored in git).
 1. Install [Godot 4.3+](https://godotengine.org/download) (standard version, not .NET).
 2. Open Godot, click **Import**, and select `project.godot` in this folder.
 3. Press **F5** (Play).
 
 Command line: `godot --path .`
+
+## Downloads
+Prebuilt Windows, Linux, Web and Android (APK) builds are on the [Releases page](https://github.com/toer15/storm-drop/releases).
 
 ## License
 MIT. See [LICENSE](LICENSE). This is a fan-made original game and is not affiliated with any other battle-royale game.

@@ -30,7 +30,7 @@ func _ready() -> void:
 	for b in [["PLAY", _play], ["SETTINGS", _settings], ["QUIT", func(): get_tree().quit()]]:
 		var btn := Button.new(); btn.text = b[0]; btn.custom_minimum_size = Vector2(300, 80)
 		btn.add_theme_font_size_override("font_size", 30)
-		btn.pressed.connect(b[1]); box.add_child(btn)
+		btn.pressed.connect(b[1]); btn.pressed.connect(func(): Util.sfx("click")); box.add_child(btn)
 	settings = PanelContainer.new(); settings.anchor_top = 0.5; settings.anchor_bottom = 0.5
 	settings.offset_left = 420; settings.offset_top = -180; settings.visible = false
 	add_child(settings)
