@@ -2,7 +2,7 @@
 """Download the CC0 / CC-BY assets Storm Drop uses (Kenney, Quaternius, Pichuliru, Poly Haven, OpenGameArt...)
 into assets/, patch the character rigs and install the import settings. Licences: CREDITS.md.
 Run once after cloning:  python3 tools/fetch_assets.py   (works on Windows, macOS, Linux)."""
-import io, os, shutil, sys, urllib.request, zipfile
+import base64, gzip, io, os, shutil, sys, urllib.request, zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
@@ -107,7 +107,17 @@ def main():
         with urllib.request.urlopen(req) as r, open(out, "wb") as o: shutil.copyfileobj(r, o)
     for uid, dst in POLY:
         out = os.path.join(ROOT, dst)
-        if not os.path.exists(out): print("Downloading", dst); _get(PP + uid + ".glb", out)
+        if os.path.exists(out): continue
+        print("Downloading", dst)
+        try:
+            _get(PP + uid + ".glb", out)
+        except Exception as e:
+            # static.poly.pizza blocks GitHub-hosted runners (HTTP 403). Fall back to the
+            # in-repo CC0 mirror: the same file, unused animation data stripped, gzip+base64.
+            mir = os.path.join(ROOT, "..", "tools", "mirror", dst.replace("/", "__") + ".gz.b64")
+            if not os.path.exists(mir): raise
+            print("  ", e, "-> using mirror", os.path.basename(mir))
+            with open(mir, "rb") as f, open(out, "wb") as o: o.write(gzip.decompress(base64.b64decode(f.read())))
     for url, dst in AUDIO:
         out = os.path.join(ROOT, dst)
         if not os.path.exists(out): print("Downloading", dst); _get(url, out)

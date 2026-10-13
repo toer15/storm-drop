@@ -71,3 +71,8 @@ Quaternius (site, itch.io, Poly Pizza, OpenGameArt), Poly Pizza, OpenGameArt, it
 - Sketchfab CC-BY guns/characters: download requires a logged-in API token, which a public CI build can't use.
 - Mixamo: its licence does not allow redistributing the animation files in a public repo.
 - Freesound: most good gun sounds are CC-BY-NC or need an account to download; the OpenGameArt CC0 sets were used.
+
+### CC0 mirror (tools/mirror)
+static.poly.pizza blocks GitHub-hosted CI runners (HTTP 403), so `tools/mirror/` keeps gzip+base64 copies of the Poly Pizza
+models listed above (all CC0, same authors/URLs as in the table). The only change is that unused animation data was stripped
+(`tools/fix_rig.py` + `tools/compact_glb.py`). `tools/fetch_assets.py` downloads from Poly Pizza first and uses the mirror only if that fails.
