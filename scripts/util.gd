@@ -1,7 +1,7 @@
 extends Node
 ## Autoload: shared settings and primitive-building helpers.
 var sensitivity := 0.25
-var bot_count := 15
+var bot_count := 49   # 50-player matches (phones default to fewer, see _ready)
 var difficulty := 1   # 0 Easy, 1 Normal, 2 Hard
 var debug_ai := false  # F3 or Settings: show each bot's current decision
 ## Screenshot mode: `godot -- --shot=res_or_user_path.png [--tab=Locker] [--delay=4]` saves the screen then quits.
@@ -11,6 +11,7 @@ var shot_delay := 4.0
 var hold_boot := false
 
 func _ready() -> void:
+	if OS.has_feature("mobile") or OS.has_feature("web"): bot_count = 29
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="): shot_path = a.substr(7)
 		elif a.begins_with("--tab="): shot_tab = a.substr(6)
@@ -19,6 +20,7 @@ func _ready() -> void:
 		elif a == "--touch": touch_enabled = true
 		elif a == "--debug-ai": debug_ai = true
 		elif a.begins_with("--difficulty="): difficulty = int(a.substr(13))
+		elif a.begins_with("--bots="): bot_count = int(a.substr(7))
 	if shot_path != "":
 		await get_tree().create_timer(shot_delay).timeout
 		await RenderingServer.frame_post_draw
@@ -99,7 +101,9 @@ func make_character(skin := "", backbling := "bb_none", pickaxe := "pick_default
 	var root := Node3D.new(); root.name = "Model"
 	var path: String
 	if skin == "": path = CHARACTERS[randi() % CHARACTERS.size()]
+	elif skin.begins_with("res://"): path = skin
 	else: path = Profile.CATALOG[skin].data.model
+	root.set_meta("path", path)
 	var model: Node3D = load(path).instantiate(); model.name = "Body"
 	model.rotation.y = PI # Quaternius models face +Z, our forward is -Z
 	stylize(model, 0.0 if low_end() else 0.006, 0.3)
@@ -217,6 +221,7 @@ func music(path: String) -> void:
 
 ## One-shot positional (or UI if pos is null) sound.
 func sfx(name: String, pos = null, vol := 0.0) -> void:
+	if Net.dedicated: return
 	var tree := get_tree()
 	if tree == null or tree.current_scene == null: return
 	var p: Node

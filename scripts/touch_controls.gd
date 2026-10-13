@@ -26,6 +26,7 @@ func _ready() -> void:
 		["RAMP", func(): player._toggle(3), 80, Vector2(-630, -110)],
 		["SWAP", func(): player.cycle_slot(), 80, Vector2(-720, -110)],
 		["VIEW", func(): player.set_first_person(not player.fp), 70, Vector2(-110, -560)],
+		["GLIDE", func(): if player.state == Player.State.FALL: player._open_glider(), 80, Vector2(-260, -560)],
 	]
 	for d in defs: _button(d[0], d[1], d[2], d[3])
 

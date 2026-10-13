@@ -18,11 +18,11 @@ static func make(type: String, rarity: int) -> Dictionary:
 	w.ammo = w.mag
 	return w
 
-static func random_drop() -> Dictionary:
-	var r := randf()
+static func random_drop(rng: RandomNumberGenerator = null) -> Dictionary:
+	var r := rng.randf() if rng else randf()
 	var rarity := 0 if r < 0.4 else (1 if r < 0.7 else (2 if r < 0.88 else (3 if r < 0.97 else 4)))
 	var types := TYPES.keys()
-	return make(types[randi() % types.size()], rarity)
+	return make(types[(rng.randi() if rng else randi()) % types.size()], rarity)
 
 static func color(w: Dictionary) -> Color:
 	return RARITY_COLORS[w.get("rarity", 0)]
