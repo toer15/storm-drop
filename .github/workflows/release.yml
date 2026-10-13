@@ -29,6 +29,8 @@ jobs:
       - name: Export
         run: |
           mkdir -p build/windows build/linux build/web dist && touch build/.gdignore
+          command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq python3 >/dev/null)
+          python3 tools/fetch_assets.py
           godot --headless --import || true
           godot --headless --export-release "Windows" build/windows/StormDrop.exe
           godot --headless --export-release "Linux" build/linux/StormDrop.x86_64

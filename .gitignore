@@ -6,3 +6,4 @@ export.cfg
 export_presets.cfg
 *.tmp
 build/
+assets/
