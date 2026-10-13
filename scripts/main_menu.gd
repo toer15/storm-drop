@@ -1,7 +1,7 @@
 extends Control
 ## Lobby: 3D stage with your equipped character, tabs (Lobby, Battle Pass, Locker, Item Shop, Career),
 ## PLAY with mode select and a fake matchmaking countdown. Touch-friendly: big buttons, scroll containers.
-const TABS := ["LOBBY", "BATTLE PASS", "LOCKER", "ITEM SHOP", "CAREER"]
+const TABS := ["LOBBY", "ONLINE", "BATTLE PASS", "LOCKER", "ITEM SHOP", "CAREER"]
 const RARITY := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 var stage_root: Node3D
 var hero: Node3D
@@ -16,6 +16,7 @@ var mm_label: Label
 var mm_time := -1.0
 var locker_cat := "skin"
 var mode_note: Label
+var xeditor: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -33,7 +34,7 @@ func _ready() -> void:
 	var bg := ButtonGroup.new()
 	for t in TABS:
 		var b := Button.new(); b.text = t; b.toggle_mode = true; b.button_group = bg; b.flat = true
-		b.custom_minimum_size = Vector2(150, 70); b.add_theme_font_size_override("font_size", 22)
+		b.custom_minimum_size = Vector2(130, 70); b.add_theme_font_size_override("font_size", 20)
 		b.size_flags_vertical = SIZE_SHRINK_CENTER
 		b.pressed.connect(_show_tab.bind(t)); b.pressed.connect(func(): Util.sfx("click"))
 		hb.add_child(b); tab_buttons[t] = b
@@ -46,11 +47,18 @@ func _ready() -> void:
 		var pg := Control.new(); pg.set_anchors_and_offsets_preset(PRESET_FULL_RECT); pg.offset_top = 90
 		pg.mouse_filter = MOUSE_FILTER_IGNORE; add_child(pg); pages[t] = pg
 	_build_lobby(); _build_settings(); _build_matchmaking()
+	pages["ONLINE"].add_child(preload("res://scripts/online_page.gd").new())
+	xeditor = preload("res://scripts/crosshair_editor.gd").new(); xeditor.visible = false
+	xeditor.set_anchors_preset(PRESET_CENTER); xeditor.grow_horizontal = GROW_DIRECTION_BOTH; xeditor.grow_vertical = GROW_DIRECTION_BOTH
+	add_child(xeditor)
 	_refresh_all()
 	var start := Util.shot_tab.to_upper().replace("_", " ") if Util.shot_tab != "" else "LOBBY"
 	if Util.shot_tab == "matchmaking": start = "LOBBY"
+	if Net.active(): start = "ONLINE" # back from an online match: show the party
 	_show_tab(start if pages.has(start) else "LOBBY")
 	if Util.shot_tab == "matchmaking": _play()
+	if Util.shot_tab == "crosshair": xeditor.visible = true
+	if Util.shot_tab == "online_host": _show_tab("ONLINE"); Net.host()
 
 # ---------- 3D stage ----------
 func _stage() -> void:
@@ -132,7 +140,7 @@ func _clear(n: Node) -> void:
 
 func _show_tab(t: String) -> void:
 	for k in pages: pages[k].visible = k == t
-	var tw := create_tween(); tw.tween_property(cam_pivot, "position:x", 0.0 if t in ["LOBBY", "BATTLE PASS"] else 1.6, 0.35)
+	var tw := create_tween(); tw.tween_property(cam_pivot, "position:x", 0.0 if t in ["LOBBY", "BATTLE PASS"] else (1.2 if t == "ONLINE" else 1.6), 0.35)
 	tab_buttons[t].button_pressed = true
 	match t:
 		"BATTLE PASS": _build_bp()
@@ -176,10 +184,11 @@ func _build_lobby() -> void:
 	news.offset_top = 20; pg.add_child(news)
 	var nv := VBoxContainer.new(); news.add_child(nv)
 	nv.add_child(_lbl("NEWS", 24, Color(1, 0.85, 0.3)))
-	var nl := _lbl("Season 1: Storm Rising\n- Battle Bus drops are live\n- Loot chests + 5 weapon types\n- New: Item Shop rotates daily", 18)
+	var nl := _lbl("v1.4: Big Island Update\n- 4x bigger map: Storm City, Rust Works, Port Gale...\n- Real Battle Bus with balloon - watch everyone jump\n- Online play: Host, Join by IP, LAN browser\n- Custom crosshairs in Settings", 18)
 	nv.add_child(nl)
 
 func _play() -> void:
+	if Net.active(): _show_tab("ONLINE"); return # online: start from the party screen
 	mm_time = 5.0; mm_overlay.visible = true
 
 func _build_matchmaking() -> void:
@@ -206,11 +215,13 @@ func _build_settings() -> void:
 	var dbg := CheckButton.new(); dbg.text = "AI debug overlay (F3)"; dbg.button_pressed = Util.debug_ai
 	dbg.add_theme_font_size_override("font_size", 22); dbg.toggled.connect(func(on): Util.debug_ai = on); sb.add_child(dbg)
 	sb.add_child(_lbl("Bots", 22))
-	var s2 := SpinBox.new(); s2.min_value = 1; s2.max_value = 40; s2.value = Util.bot_count
+	var s2 := SpinBox.new(); s2.min_value = 1; s2.max_value = 51; s2.value = Util.bot_count
 	s2.value_changed.connect(func(v): Util.bot_count = int(v)); sb.add_child(s2)
 	var fs := CheckButton.new(); fs.text = "Fullscreen"; fs.add_theme_font_size_override("font_size", 22)
 	fs.toggled.connect(func(on): DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED))
 	sb.add_child(fs)
+	var xb := Button.new(); xb.text = "CROSSHAIR EDITOR..."; xb.custom_minimum_size = Vector2(320, 56); xb.add_theme_font_size_override("font_size", 20)
+	xb.pressed.connect(func(): settings.visible = false; xeditor.visible = true); sb.add_child(xb)
 	var tc := CheckButton.new(); tc.text = "Touch controls"; tc.button_pressed = Util.touch_enabled
 	tc.add_theme_font_size_override("font_size", 22)
 	tc.toggled.connect(func(on): Util.touch_enabled = on); sb.add_child(tc)
