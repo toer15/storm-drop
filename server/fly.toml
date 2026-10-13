@@ -1,0 +1,28 @@
+# fly.io config for the Storm Drop dedicated server (WebSocket mode, so PC, Android AND browser players can join
+# with the address  wss://<your-app>.fly.dev ). Fly terminates TLS and forwards the WebSocket to port 7777.
+#   fly launch --no-deploy --copy-config --name <your-app>   (pick a region close to your players)
+#   fly deploy
+app = "storm-drop-change-me"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "7777"
+  PROTO = "--ws"
+  BOTS = "30"
+  MAXP = "16"
+
+[[services]]
+  internal_port = 7777
+  protocol = "tcp"
+  auto_stop_machines = "off"
+  min_machines_running = 1
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
